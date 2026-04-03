@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TowersBC">
 <meta name="theme-color" content="#0a0f1a">
-<title>Towers Club Badminton v2.3</title>
+<title>Towers Club Badminton v2.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -320,7 +320,7 @@ input:checked+.slider:before{transform:translateX(20px);}
   <div class="sp-badge"><svg width="144" height="144"><use href="#tc-logo"/></svg></div>
   <div class="sp-title">TOWERS CLUB BC</div>
   <div class="sp-sub">Group A · Anna Nagar · Chennai</div>
-  <div class="sp-ver">v2.3 — April 2026</div>
+  <div class="sp-ver">v2.5 — April 2026</div>
   <div class="sp-spin"></div>
 </div>
 
@@ -334,7 +334,7 @@ input:checked+.slider:before{transform:translateX(20px);}
     <div class="hdr-text">
       <div class="hdr-title">TOWERS BC</div>
       <div class="hdr-meta">
-        <div class="ver-pill">v2.3</div>
+        <div class="ver-pill">v2.5</div>
         <div class="hdr-date" id="hdrDate"></div>
       </div>
     </div>
@@ -477,10 +477,39 @@ input:checked+.slider:before{transform:translateX(20px);}
   <div id="roster-list"></div>
   <div class="card" style="margin-top:4px"><div class="ct">ALL-TIME SHUTTLE BALANCES</div><div id="balance-list"></div></div>
   <div class="card" id="box-purchase-card">
-    <div class="ct">BOX PURCHASE <span style="font-size:9px;color:var(--muted)">(Admin · 10 shuttles/box)</span></div>
+    <div class="ct">BOX PURCHASE <span style="font-size:9px;color:var(--muted)">(Admin)</span></div>
     <div class="row mb8">
       <div class="f1"><span class="il">Player Who Bought</span><select id="box-player"><option value="">-- Select --</option></select></div>
-      <div style="width:68px;margin-left:7px"><span class="il">Boxes</span><input type="number" id="box-count" value="1" min="1" max="50"></div>
+      <div style="width:62px;margin-left:7px"><span class="il">Boxes</span><input type="number" id="box-count" value="1" min="1" max="50" oninput="updateBoxPreview()"></div>
+    </div>
+    <div class="ig mb8">
+      <span class="il">Shuttles Per Box</span>
+      <div style="display:flex;gap:8px">
+        <div id="spb-10" onclick="selectSPB(10)" style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--accent);background:rgba(22,199,132,.12);text-align:center;cursor:pointer;transition:all .2s">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">10</div>
+          <div style="font-size:10px;color:var(--muted)">shuttles/box</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">Standard</div>
+        </div>
+        <div id="spb-12" onclick="selectSPB(12)" style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:var(--surface);text-align:center;cursor:pointer;transition:all .2s">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--muted)">12</div>
+          <div style="font-size:10px;color:var(--muted)">shuttles/box</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">Premium</div>
+        </div>
+        <div id="spb-custom" onclick="selectSPB('custom')" style="flex:1;padding:10px;border-radius:10px;border:2px solid var(--border);background:var(--surface);text-align:center;cursor:pointer;transition:all .2s">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--muted)">??</div>
+          <div style="font-size:10px;color:var(--muted)">shuttles/box</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">Custom</div>
+        </div>
+      </div>
+      <div id="custom-spb-wrap" style="display:none;margin-top:8px">
+        <span class="il">Enter shuttles per box</span>
+        <input type="number" id="custom-spb-val" placeholder="e.g. 6" min="1" max="20" oninput="updateBoxPreview()">
+      </div>
+    </div>
+    <!-- Preview total shuttles -->
+    <div id="box-preview" style="background:rgba(22,199,132,.08);border:1px solid rgba(22,199,132,.2);border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:12px;color:var(--muted)">Total shuttles to credit:</span>
+      <span id="box-preview-total" style="font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--accent)">10</span>
     </div>
     <button class="btn btn-o" onclick="addBox()">💰 Record Purchase</button>
   </div>
@@ -581,13 +610,14 @@ input:checked+.slider:before{transform:translateX(20px);}
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION="v2.3";;
+const APP_VERSION="v2.5";;
 const ADMIN_PIN='1255';
 const DB_KEY='towersbc_v22';
 
 let db={players:[],games:[],purchases:[],weeks:[],openingStock:0};
 let isAdmin=false,pinBuf='',pendingLockWeek=null,curScreen='home';
 let selP=new Set(),sCount=1,winnerSet=new Set(),scoreA=21,scoreB=15;
+let shuttlesPerBox=10;
 let champMode='individual',curHelpLang='en';
 
 function loadDB(){try{const s=localStorage.getItem(DB_KEY);if(s)db=JSON.parse(s);}catch(e){}}
@@ -617,7 +647,7 @@ function weekKey(d){const dt=new Date(d+'T00:00:00');const j=new Date(dt.getFull
 function weekLabel(wk){const[y,w]=wk.split('-W').map(Number);const j=new Date(y,0,4);const mon=new Date(j.getTime()+((w-1)*7-((j.getDay()+6)%7))*86400000);const sun=new Date(mon.getTime()+6*86400000);return `${fmtDate(mon.toISOString().slice(0,10))} – ${fmtDate(sun.toISOString().slice(0,10))}`;}
 function isWeekLocked(wk){const w=db.weeks.find(x=>x.weekKey===wk);return w&&w.locked;}
 function ensureWeek(wk){if(!db.weeks.find(x=>x.weekKey===wk))db.weeks.push({weekKey:wk,label:weekLabel(wk),locked:false,lockedAt:null});}
-function totalBought(){return db.openingStock+db.purchases.reduce((a,p)=>a+p.boxes*10,0);}
+function totalBought(){return db.openingStock+db.purchases.reduce((a,p)=>a+p.boxes*(p.spb||10),0);}
 function totalUsed(){return db.games.reduce((a,g)=>a+g.shuttles,0);}
 function stockLeft(){return Math.max(0,totalBought()-totalUsed());}
 function todayGames(){return db.games.filter(g=>g.date===todayStr());}
@@ -625,7 +655,7 @@ function todayGames(){return db.games.filter(g=>g.date===todayStr());}
 function playerStats(){
   const s={};db.players.forEach(p=>{s[p.id]={consumed:0,contributed:0,games:0,wins:0};});
   db.games.forEach(g=>{const sh=g.shuttles/g.players.length;g.players.forEach(pid=>{if(s[pid]){s[pid].consumed+=sh;s[pid].games++;}});if(g.winners)g.winners.forEach(pid=>{if(s[pid])s[pid].wins++;});});
-  db.purchases.forEach(p=>{if(s[p.playerId])s[p.playerId].contributed+=p.boxes*10;});
+  db.purchases.forEach(p=>{if(s[p.playerId])s[p.playerId].contributed+=p.boxes*(p.spb||10);});
   return s;
 }
 
@@ -729,7 +759,88 @@ function renderPlayers(){
 }
 function addPlayer(){if(!isAdmin){toast('Admin only','err');return;}const name=document.getElementById('np-name').value.trim();const initials=document.getElementById('np-init').value.trim().toUpperCase();const phone=document.getElementById('np-phone').value.trim();if(!name||!initials){toast('Name and initials required','err');return;}if(db.players.find(p=>p.initials===initials)){toast('Initials already used','err');return;}db.players.push({id:uid(),name,initials,phone,joinDate:todayStr()});saveDB();['np-name','np-init','np-phone'].forEach(id=>document.getElementById(id).value='');toast(`${name} added`);renderPlayers();}
 function delPlayer(id){if(!isAdmin)return;const p=getP(id);if(!confirm(`Remove ${p?.name}?`))return;db.players=db.players.filter(x=>x.id!==id);selP.delete(id);winnerSet.delete(id);saveDB();renderPlayers();toast('Player removed');}
-function addBox(){if(!isAdmin){toast('Admin only','err');return;}const pid=document.getElementById('box-player').value;const boxes=parseInt(document.getElementById('box-count').value)||1;if(!pid){toast('Select a player','err');return;}const wk=weekKey(todayStr());ensureWeek(wk);db.purchases.push({id:uid(),date:todayStr(),weekKey:wk,playerId:pid,boxes,ts:Date.now()});saveDB();toast(`${boxes} box${boxes>1?'es':''} credited to ${getP(pid).name}`);renderPlayers();renderStock();}
+function selectSPB(val){
+  shuttlesPerBox=val==='custom'?null:val;
+  ['10','12','custom'].forEach(v=>{
+    const el=document.getElementById('spb-'+v);
+    if(!el)return;
+    const active=String(val)===String(v);
+    el.style.border=active?'2px solid var(--accent)':'2px solid var(--border)';
+    el.style.background=active?'rgba(22,199,132,.12)':'var(--surface)';
+    el.querySelector('div').style.color=active?'var(--accent)':'var(--muted)';
+  });
+  document.getElementById('custom-spb-wrap').style.display=val==='custom'?'block':'none';
+  updateBoxPreview();
+}
+function getEffectiveSPB(){
+  if(shuttlesPerBox===null){
+    const v=parseInt(document.getElementById('custom-spb-val').value)||0;
+    return v;
+  }
+  return shuttlesPerBox||10;
+}
+function updateBoxPreview(){
+  const boxes=parseInt(document.getElementById('box-count').value)||1;
+  const spb=getEffectiveSPB();
+  const total=boxes*spb;
+  const el=document.getElementById('box-preview-total');
+  if(el) el.textContent=total>0?total:'—';
+}
+function addBox(){
+  if(!isAdmin){toast('Admin only','err');return;}
+  const pid=document.getElementById('box-player').value;
+  const boxes=parseInt(document.getElementById('box-count').value)||1;
+  const spb=getEffectiveSPB();
+  if(!pid){toast('Select a player','err');return;}
+  if(!spb||spb<1){toast('Enter shuttles per box','err');return;}
+  const p=getP(pid);
+  const wk=weekKey(todayStr());
+  ensureWeek(wk);
+  const totalShuttles=boxes*spb;
+  db.purchases.push({id:uid(),date:todayStr(),weekKey:wk,playerId:pid,boxes,spb,ts:Date.now()});
+  saveDB();
+  toast(`${boxes} box${boxes>1?'es':''} · ${totalShuttles} shuttles credited to ${p.name}`);
+  renderPlayers();
+  renderStock();
+  sendBoxWA(p, boxes, spb);
+}
+
+function sendBoxWA(player, boxes, spb){
+  spb=spb||10;
+  const shuttles=boxes*spb;
+  const stats=playerStats();
+  const s=stats[player.id]||{consumed:0,contributed:0};
+  const bal=s.contributed-s.consumed;
+  // Build message
+  let msg=`🏸 *TOWERS CLUB BADMINTON*\n`;
+  msg+=`📦 *Box Purchase Recorded*\n`;
+  msg+=`━━━━━━━━━━━━━━\n`;
+  msg+=`👤 Player: *${player.name}* (${player.initials})\n`;
+  msg+=`📦 Boxes Purchased: *${boxes} box${boxes>1?'es':''}* (${spb} shuttles/box)\n`;
+  msg+=`🪶 Shuttles Credited: *${shuttles}*\n`;
+  msg+=`📅 Date: *${fmtDate(todayStr())}*\n`;
+  msg+=`━━━━━━━━━━━━━━\n`;
+  msg+=`📊 *Your Updated Balance:*\n`;
+  msg+=`  Contributed: ${s.contributed} 🪶\n`;
+  msg+=`  Consumed: ${s.consumed.toFixed(2)} 🪶\n`;
+  msg+=`  Net Balance: ${bal>=0?'+':''}${bal.toFixed(2)} 🪶\n`;
+  msg+=`━━━━━━━━━━━━━━\n`;
+  msg+=`_Thank you for contributing! 🙏_\n`;
+  msg+=`_Towers Club BC · ${APP_VERSION}_`;
+
+  // If player has phone number, open direct WhatsApp to that number
+  // Otherwise open WhatsApp with message ready to send manually
+  const phone=player.phone?player.phone.replace(/[^0-9]/g,''):'';
+  let url;
+  if(phone&&phone.length>=10){
+    url=`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  } else {
+    // No phone stored — open WhatsApp share so admin can forward manually
+    url=`https://wa.me/?text=${encodeURIComponent(msg)}`;
+    toast(`No phone for ${player.name} — forwarding manually`,`err`);
+  }
+  setTimeout(()=>window.open(url,'_blank'),600);
+}
 
 function renderStock(){
   const bought=totalBought(),used=totalUsed(),left=stockLeft();const pct=bought>0?(left/bought)*100:0;
@@ -739,7 +850,7 @@ function renderStock(){
   document.getElementById('opening-stock-card').style.display=isAdmin?'block':'none';
   const log=document.getElementById('purchase-log');
   if(!db.purchases.length){log.innerHTML='<div class="empty"><div class="empty-icon">📦</div><div>No purchases</div></div>';return;}
-  log.innerHTML=[...db.purchases].sort((a,b)=>b.ts-a.ts).map(pur=>{const p=getP(pur.playerId);return `<div class="gr"><div class="gr-num">📦</div><div class="gr-body"><div class="gr-players bold">${p?.name||'?'} · ${pur.boxes} box${pur.boxes>1?'es':''}</div><div class="gr-time">${fmtDate(pur.date)} · ${pur.boxes*10} shuttles</div></div></div>`;}).join('');
+  log.innerHTML=[...db.purchases].sort((a,b)=>b.ts-a.ts).map(pur=>{const p=getP(pur.playerId);return `<div class="gr"><div class="gr-num">📦</div><div class="gr-body"><div class="gr-players bold">${p?.name||'?'} · ${pur.boxes} box${pur.boxes>1?'es':''} · ${pur.spb||10}/box</div><div class="gr-time">${fmtDate(pur.date)} · ${pur.boxes*(pur.spb||10)} shuttles total</div></div></div>`;}).join('');
 }
 function setOpening(){if(!isAdmin){toast('Admin only','err');return;}const v=parseInt(document.getElementById('op-stock').value);if(isNaN(v)||v<0){toast('Enter valid number','err');return;}db.openingStock=v;saveDB();renderStock();toast(`Opening stock: ${v} shuttles`);}
 
@@ -781,7 +892,7 @@ function toggleWD(wk){const el=document.getElementById('wd-'+wk.replace(/[^a-z0-
 function renderWD(wk,data){if(!data.games.length)return '<div class="tm" style="padding:7px 0">No games</div>';const byDate={};data.games.forEach(g=>{if(!byDate[g.date])byDate[g.date]=[];byDate[g.date].push(g);});let html='';Object.keys(byDate).sort().forEach(date=>{html+=`<div class="dg-label">${fmtDate(date)}</div>`;byDate[date].forEach((g,i)=>{const names=g.players.map(pid=>{const p=getP(pid);return p?p.initials:'?';}).join('·');let ex='';if(g.score)ex+=`<span style="font-size:10px;color:var(--gold);margin-left:5px">${g.score.a}–${g.score.b}</span>`;if(g.winners&&g.winners.length){const wn=g.winners.map(id=>{const p=getP(id);return p?p.initials:'?';}).join('&');ex+=`<span style="font-size:9px;color:var(--gold);margin-left:4px">🏆${wn}</span>`;}html+=`<div class="gr"><div class="gr-num">${String(i+1).padStart(2,'0')}</div><div class="gr-body"><div class="gr-players">${names}${ex}</div></div><span class="gr-badge">${g.shuttles}🏸</span></div>`;});});return html;}
 function renderPlayerReport(){const pid=document.getElementById('rp-sel')?.value;const cont=document.getElementById('player-report-list');if(!cont)return;const games=pid?db.games.filter(g=>g.players.includes(pid)):db.games;if(!games.length){cont.innerHTML='<div class="empty"><div>No games</div></div>';return;}const byDate={};games.forEach(g=>{if(!byDate[g.date])byDate[g.date]=[];byDate[g.date].push(g);});let html='',total=0;Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).forEach(date=>{const dg=byDate[date];const ts=dg.reduce((a,g)=>a+(pid?g.shuttles/g.players.length:g.shuttles),0);total+=ts;html+=`<div class="dg-label">${fmtDate(date)} — ${ts.toFixed(2)} 🏸</div>`;dg.forEach((g,i)=>{const names=g.players.map(p2=>{const p=getP(p2);return p?p.initials:'?';}).join('·');const share=pid?(g.shuttles/g.players.length).toFixed(2):g.shuttles;html+=`<div class="gr"><div class="gr-num">${String(i+1).padStart(2,'0')}</div><div class="gr-body"><div class="gr-players">${names}</div></div><span class="gr-badge">${share}🏸</span></div>`;});});cont.innerHTML=`<div class="card" style="margin-bottom:8px"><div class="tm center">Total: <span class="bold ta">${total.toFixed(2)} 🏸</span></div></div>`+html;}
 
-function openLockModal(wk){if(!isAdmin){toast('Admin only','err');return;}pendingLockWeek=wk;document.getElementById('lock-modal-msg').textContent=`Lock ${wk} (${weekLabel(wk)})? Cannot be undone.`;const stats={};db.players.forEach(p=>{stats[p.id]={consumed:0,contributed:0};});db.games.filter(g=>g.weekKey===wk).forEach(g=>{const sh=g.shuttles/g.players.length;g.players.forEach(pid=>{if(stats[pid])stats[pid].consumed+=sh;});});db.purchases.filter(p=>p.weekKey===wk).forEach(p=>{if(stats[p.playerId])stats[p.playerId].contributed+=p.boxes*10;});let prev=`<table style="width:100%;font-size:11px;border-collapse:collapse"><tr><th style="text-align:left;padding:3px;border-bottom:1px solid var(--border)">Player</th><th style="text-align:right;padding:3px;border-bottom:1px solid var(--border)">Used</th><th style="text-align:right;padding:3px;border-bottom:1px solid var(--border)">Contributed</th><th style="text-align:right;padding:3px;border-bottom:1px solid var(--border)">Balance</th></tr>`;db.players.forEach(p=>{const s=stats[p.id]||{consumed:0,contributed:0};const bal=s.contributed-s.consumed;prev+=`<tr><td style="padding:3px">${p.initials}</td><td style="text-align:right;padding:3px">${s.consumed.toFixed(2)}</td><td style="text-align:right;padding:3px">${s.contributed}</td><td style="text-align:right;padding:3px;color:${bal>=0?'var(--accent)':'var(--red)'}">${bal>=0?'+':''}${bal.toFixed(2)}</td></tr>`;});prev+=`</table>`;document.getElementById('lock-modal-preview').innerHTML=prev;openModal('lockModal');}
+function openLockModal(wk){if(!isAdmin){toast('Admin only','err');return;}pendingLockWeek=wk;document.getElementById('lock-modal-msg').textContent=`Lock ${wk} (${weekLabel(wk)})? Cannot be undone.`;const stats={};db.players.forEach(p=>{stats[p.id]={consumed:0,contributed:0};});db.games.filter(g=>g.weekKey===wk).forEach(g=>{const sh=g.shuttles/g.players.length;g.players.forEach(pid=>{if(stats[pid])stats[pid].consumed+=sh;});});db.purchases.filter(p=>p.weekKey===wk).forEach(p=>{if(stats[p.playerId])stats[p.playerId].contributed+=p.boxes*(p.spb||10);});let prev=`<table style="width:100%;font-size:11px;border-collapse:collapse"><tr><th style="text-align:left;padding:3px;border-bottom:1px solid var(--border)">Player</th><th style="text-align:right;padding:3px;border-bottom:1px solid var(--border)">Used</th><th style="text-align:right;padding:3px;border-bottom:1px solid var(--border)">Contributed</th><th style="text-align:right;padding:3px;border-bottom:1px solid var(--border)">Balance</th></tr>`;db.players.forEach(p=>{const s=stats[p.id]||{consumed:0,contributed:0};const bal=s.contributed-s.consumed;prev+=`<tr><td style="padding:3px">${p.initials}</td><td style="text-align:right;padding:3px">${s.consumed.toFixed(2)}</td><td style="text-align:right;padding:3px">${s.contributed}</td><td style="text-align:right;padding:3px;color:${bal>=0?'var(--accent)':'var(--red)'}">${bal>=0?'+':''}${bal.toFixed(2)}</td></tr>`;});prev+=`</table>`;document.getElementById('lock-modal-preview').innerHTML=prev;openModal('lockModal');}
 function confirmLock(){if(!pendingLockWeek)return;const wk=pendingLockWeek;ensureWeek(wk);const widx=db.weeks.findIndex(x=>x.weekKey===wk);db.weeks[widx].locked=true;db.weeks[widx].lockedAt=Date.now();db.games.forEach(g=>{if(g.weekKey===wk)g.locked=true;});saveDB();closeModal('lockModal');toast('Week locked 🔒');renderReport();setTimeout(()=>printWeekReport(wk),400);}
 
 function printWeekReport(wk){
@@ -789,7 +900,7 @@ function printWeekReport(wk){
   const wInfo=db.weeks.find(x=>x.weekKey===wk);const label=wInfo?wInfo.label:weekLabel(wk);
   const stats={};db.players.forEach(p=>{stats[p.id]={consumed:0,contributed:0,games:0,wins:0};});
   games.forEach(g=>{const sh=g.shuttles/g.players.length;g.players.forEach(pid=>{if(stats[pid]){stats[pid].consumed+=sh;stats[pid].games++;}});if(g.winners)g.winners.forEach(pid=>{if(stats[pid])stats[pid].wins++;});});
-  purchases.forEach(p=>{if(stats[p.playerId])stats[p.playerId].contributed+=p.boxes*10;});
+  purchases.forEach(p=>{if(stats[p.playerId])stats[p.playerId].contributed+=p.boxes*(p.spb||10);});
   const byDate={};games.forEach(g=>{if(!byDate[g.date])byDate[g.date]=[];byDate[g.date].push(g);});
   let gameRows='';Object.keys(byDate).sort().forEach(date=>{byDate[date].forEach((g,i)=>{const names=g.players.map(pid=>{const p=getP(pid);return p?p.name:'?';}).join(', ');const score=g.score?`${g.score.a}–${g.score.b}`:'—';const winners=g.winners&&g.winners.length?g.winners.map(id=>{const p=getP(id);return p?p.initials:'?';}).join('&'):'—';gameRows+=`<tr><td>${fmtDate(date)}</td><td>${String(i+1).padStart(2,'0')}</td><td>${names}</td><td style="text-align:center">${g.shuttles}</td><td style="text-align:center">${score}</td><td style="text-align:center">${winners}</td></tr>`;});});
   let balRows='';db.players.forEach(p=>{const s=stats[p.id]||{consumed:0,contributed:0,games:0,wins:0};const bal=s.contributed-s.consumed;balRows+=`<tr><td>${p.initials}</td><td>${p.name}</td><td style="text-align:center">${s.games}</td><td style="text-align:center">${s.wins}</td><td style="text-align:center">${s.consumed.toFixed(2)}</td><td style="text-align:center">${s.contributed}</td><td style="text-align:center;font-weight:bold;color:${bal>=0?'#0a5a2a':'#c0392b'}">${bal>=0?'+':''}${bal.toFixed(2)}</td><td style="text-align:center;min-width:80px"></td></tr>`;});
@@ -812,7 +923,7 @@ function printWeekReport(wk){
     <div class="pr-sec">Player Balances &amp; Signatures</div>
     <table class="pr-table"><tr><th>Ini</th><th>Name</th><th>Games</th><th>Wins</th><th>Consumed</th><th>Contributed</th><th>Balance</th><th>Signature</th></tr>${balRows}</table>
     <div class="pr-sec">Box Purchases</div>
-    <table class="pr-table"><tr><th>Date</th><th>Player</th><th>Boxes</th><th>Shuttles</th></tr>${purchases.map(p=>{const pl=getP(p.playerId);return `<tr><td>${fmtDate(p.date)}</td><td>${pl?.name||'?'}</td><td>${p.boxes}</td><td>${p.boxes*10}</td></tr>`;}).join('')||'<tr><td colspan="4">None</td></tr>'}</table>
+    <table class="pr-table"><tr><th>Date</th><th>Player</th><th>Boxes</th><th>Per Box</th><th>Total Shuttles</th></tr>${purchases.map(p=>{const pl=getP(p.playerId);return `<tr><td>${fmtDate(p.date)}</td><td>${pl?.name||'?'}</td><td>${p.boxes}</td><td>${p.spb||10}</td><td>${p.boxes*(p.spb||10)}</td></tr>`;}).join('')||'<tr><td colspan="5">None</td></tr>'}</table>
     <div class="pr-sign"><div class="pr-sign-box">Admin Signature</div><div class="pr-sign-box">Date</div><div class="pr-sign-box">Verified By</div></div>
     <div class="pr-footer">Towers Club Badminton · ${APP_VERSION} · Auto-generated · Do not alter after printing</div>
   </div>`;
