@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TowersBC">
 <meta name="theme-color" content="#0a0f1a">
-<title>Towers Club Badminton v2.7</title>
+<title>Towers Club Badminton v2.8</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -234,6 +234,33 @@ input[type=date]{color-scheme:dark;}
 .slider:before{content:'';position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
 input:checked+.slider{background:var(--accent);}
 input:checked+.slider:before{transform:translateX(20px);}
+
+/* ══ SECURITY OVERLAY ══ */
+#sec-overlay{position:fixed;inset:0;z-index:99998;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+#sec-overlay.hidden{display:none;}
+.sec-badge{width:100px;height:100px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;padding:7px;box-shadow:0 0 36px rgba(22,199,132,.3);margin-bottom:14px;}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:3px;color:var(--accent);margin-bottom:2px;text-align:center;}
+.sec-sub{font-size:11px;color:var(--muted);text-align:center;letter-spacing:1px;margin-bottom:20px;}
+.sec-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:320px;}
+.sec-label{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--gold);margin-bottom:12px;text-align:center;}
+.sec-err{color:var(--red);font-size:12px;text-align:center;min-height:16px;margin-bottom:6px;font-weight:500;}
+.sec-ok{color:var(--accent);font-size:12px;text-align:center;min-height:16px;margin-bottom:6px;font-weight:500;}
+.sec-dots{display:flex;gap:12px;justify-content:center;margin:10px 0 14px;}
+.sec-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);transition:all .2s;}
+.sec-dot.on{background:var(--accent);border-color:var(--accent);}
+.sec-dot.on.adm{background:var(--gold);border-color:var(--gold);}
+.sec-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px;}
+.sec-key{padding:13px;border-radius:10px;background:var(--surface);border:1px solid var(--border);font-size:18px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.sec-key:active{background:var(--accent);color:#030a05;transform:scale(.95);}
+.sec-pgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;max-height:260px;overflow-y:auto;margin-bottom:12px;}
+.sec-pbtn{background:var(--surface);border:2px solid var(--border);border-radius:10px;padding:10px 6px;cursor:pointer;text-align:center;transition:all .2s;}
+.sec-pbtn.sel{border-color:var(--accent);background:rgba(22,199,132,.1);}
+.sec-pini{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);margin-bottom:3px;}
+.sec-pname{font-size:11px;font-weight:600;color:var(--text);}
+.sec-footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:7px 14px;display:flex;align-items:center;justify-content:space-between;z-index:500;}
+.sec-who{display:flex;align-items:center;gap:7px;background:rgba(22,199,132,.1);border:1px solid rgba(22,199,132,.2);border-radius:20px;padding:4px 11px;}
+.sec-who-ini{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);font-weight:700;}
+.sec-who-name{font-size:12px;color:var(--text);font-weight:500;}
 </style>
 </head>
 <body>
@@ -316,11 +343,68 @@ input:checked+.slider:before{transform:translateX(20px);}
 </svg>
 
 <!-- SPLASH -->
+
+<!-- ══ SECURITY OVERLAY ══ -->
+<div id="sec-overlay">
+  <div class="sec-badge">
+    <svg width="84" height="84"><use href="#tc-logo"/></svg>
+  </div>
+  <div class="sec-title">TOWERS CLUB BC</div>
+  <div class="sec-sub" id="sec-sub-text">BADMINTON · GROUP A · ANNA NAGAR</div>
+
+  <!-- STEP 1: SELECT PLAYER -->
+  <div class="sec-card" id="sec-step1">
+    <div class="sec-label">SELECT YOUR NAME</div>
+    <div class="sec-pgrid" id="sec-pgrid"></div>
+    <div class="sec-err" id="sec-err1"></div>
+  </div>
+
+  <!-- STEP 2: ENTER PIN -->
+  <div class="sec-card" id="sec-step2" style="display:none">
+    <div class="sec-label" id="sec-pin-label">ENTER YOUR 4-DIGIT PIN</div>
+    <div class="sec-dots">
+      <div class="sec-dot" id="sd0"></div>
+      <div class="sec-dot" id="sd1"></div>
+      <div class="sec-dot" id="sd2"></div>
+      <div class="sec-dot" id="sd3"></div>
+    </div>
+    <div class="sec-pad">
+      <div class="sec-key" onclick="secKey('1')">1</div>
+      <div class="sec-key" onclick="secKey('2')">2</div>
+      <div class="sec-key" onclick="secKey('3')">3</div>
+      <div class="sec-key" onclick="secKey('4')">4</div>
+      <div class="sec-key" onclick="secKey('5')">5</div>
+      <div class="sec-key" onclick="secKey('6')">6</div>
+      <div class="sec-key" onclick="secKey('7')">7</div>
+      <div class="sec-key" onclick="secKey('8')">8</div>
+      <div class="sec-key" onclick="secKey('9')">9</div>
+      <div class="sec-key" onclick="secKey('clr')" style="color:var(--red)">⌫</div>
+      <div class="sec-key" onclick="secKey('0')">0</div>
+      <div class="sec-key" onclick="secBack()" style="color:var(--muted);font-size:13px">← Back</div>
+    </div>
+    <div class="sec-err" id="sec-err2"></div>
+    <div class="sec-ok" id="sec-ok2"></div>
+    <!-- First-time PIN setup message -->
+    <div id="sec-newpin-msg" style="display:none;font-size:11px;color:var(--gold);text-align:center;padding:6px;background:rgba(240,180,41,.08);border-radius:8px;margin-top:4px">
+      First time? Enter any 4-digit PIN — this becomes YOUR permanent PIN on this phone only.
+    </div>
+  </div>
+</div>
+
+<!-- LOGGED-IN FOOTER BAR (shows who is logged in) -->
+<div class="sec-footer" id="sec-footer" style="display:none">
+  <div class="sec-who">
+    <span class="sec-who-ini" id="footer-ini">EO</span>
+    <span class="sec-who-name" id="footer-name">Mr. Elango</span>
+  </div>
+  <button onclick="secLock()" style="background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif">🔒 Lock</button>
+</div>
+
 <div id="splash">
   <div class="sp-badge"><svg width="144" height="144"><use href="#tc-logo"/></svg></div>
   <div class="sp-title">TOWERS CLUB BC</div>
   <div class="sp-sub">Group A · Anna Nagar · Chennai</div>
-  <div class="sp-ver">v2.7 — April 2026</div>
+  <div class="sp-ver">v2.8 — April 2026</div>
   <div class="sp-spin"></div>
 </div>
 
@@ -334,7 +418,7 @@ input:checked+.slider:before{transform:translateX(20px);}
     <div class="hdr-text">
       <div class="hdr-title">TOWERS BC</div>
       <div class="hdr-meta">
-        <div class="ver-pill">v2.7</div>
+        <div class="ver-pill">v2.8</div>
         <div class="hdr-date" id="hdrDate"></div>
       </div>
     </div>
@@ -610,7 +694,7 @@ input:checked+.slider:before{transform:translateX(20px);}
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION="v2.7";
+const APP_VERSION="v2.8";
 const ADMIN_PIN='1255';
 const DB_KEY='towersbc_v22';
 
@@ -674,7 +758,17 @@ function renderHome(){
   const pmap={};tg.forEach(g=>{g.players.forEach(pid=>{if(!pmap[pid])pmap[pid]={games:0,shuttles:0,wins:0};pmap[pid].games++;pmap[pid].shuttles+=g.shuttles/g.players.length;if(g.winners&&g.winners.includes(pid))pmap[pid].wins++;});});
   const cont=document.getElementById('home-player-summary');
   if(!Object.keys(pmap).length){cont.innerHTML='<div class="empty" style="padding:14px"><div class="empty-icon">🏸</div><div>No games yet today</div></div>';return;}
-  cont.innerHTML=Object.entries(pmap).map(([pid,v])=>{const p=getP(pid);if(!p)return '';return `<div class="br"><span class="br-ini">${p.initials}</span><span class="br-name">${p.name}</span><span class="tm" style="margin-right:5px">${v.games}g</span>${v.wins?`<span style="color:var(--gold);font-size:10px;margin-right:5px">🏆${v.wins}W</span>`:''}<span class="bv bv-neg">−${v.shuttles.toFixed(2)}🏸</span></div>`;}).join('');
+  cont.innerHTML=Object.entries(pmap).map(([pid,v])=>{
+  const p=getP(pid);if(!p)return '';
+  const visible=canSeeBalance(pid);
+  return `<div class="br">
+    <span class="br-ini">${p.initials}</span>
+    <span class="br-name">${p.name}</span>
+    <span class="tm" style="margin-right:5px">${v.games}g</span>
+    ${v.wins?`<span style="color:var(--gold);font-size:10px;margin-right:5px">🏆${v.wins}W</span>`:''}
+    ${visible?`<span class="bv bv-neg">−${v.shuttles.toFixed(2)}🏸</span>`:`<span class="bv bv-zer">🔒</span>`}
+  </div>`;
+}).join('');
 }
 
 function renderGame(){
@@ -755,7 +849,15 @@ function renderPlayers(){
   document.getElementById('roster-list').innerHTML=db.players.length?db.players.map(p=>`<div class="gr" style="margin-bottom:7px"><div class="gr-num">${p.initials}</div><div class="gr-body"><div class="gr-players bold">${p.name}</div><div class="gr-time">${p.phone||'No phone'} · Joined ${fmtDate(p.joinDate)}</div></div>${isAdmin?`<button class="btn-sm bs-r" onclick="delPlayer('${p.id}')">✕</button>`:''}</div>`).join(''):'<div class="empty"><div class="empty-icon">👤</div><div>No players</div></div>';
   const stats=playerStats();
   const sorted=[...db.players].sort((a,b)=>{const ba=(stats[a.id]?.contributed||0)-(stats[a.id]?.consumed||0);const bb=(stats[b.id]?.contributed||0)-(stats[b.id]?.consumed||0);return bb-ba;});
-  document.getElementById('balance-list').innerHTML=sorted.map(p=>{const s=stats[p.id]||{consumed:0,contributed:0,games:0,wins:0};const bal=s.contributed-s.consumed;const cls=bal>0?'bv-pos':bal<0?'bv-neg':'bv-zer';return `<div class="br"><span class="br-ini">${p.initials}</span><span class="br-name">${p.name}</span><span class="br-games">${s.games}g ${s.wins?`🏆${s.wins}W`:''}</span><span class="bv ${cls}">${bal>=0?'+':''}${bal.toFixed(1)}</span></div>`;}).join('');
+  document.getElementById('balance-list').innerHTML=sorted.map(p=>{
+  const s=stats[p.id]||{consumed:0,contributed:0,games:0,wins:0};
+  const bal=s.contributed-s.consumed;
+  const cls=bal>0?'bv-pos':bal<0?'bv-neg':'bv-zer';
+  const visible=canSeeBalance(p.id);
+  const balDisplay=visible?`<span class="bv ${cls}">${bal>=0?'+':''}${bal.toFixed(1)}</span>`:`<span class="bv bv-zer" title="Login to see">🔒</span>`;
+  const consumedDisplay=visible?`${s.consumed.toFixed(1)} used`:'—';
+  return `<div class="br"><span class="br-ini">${p.initials}</span><span class="br-name">${p.name}</span><span class="br-games">${s.games}g ${s.wins?`🏆${s.wins}W`:''} ${consumedDisplay}</span>${balDisplay}</div>`;
+}).join('');
 }
 function addPlayer(){if(!isAdmin){toast('Admin only','err');return;}const name=document.getElementById('np-name').value.trim();const initials=document.getElementById('np-init').value.trim().toUpperCase();const phone=document.getElementById('np-phone').value.trim();if(!name||!initials){toast('Name and initials required','err');return;}if(db.players.find(p=>p.initials===initials)){toast('Initials already used','err');return;}db.players.push({id:uid(),name,initials,phone,joinDate:todayStr()});saveDB();['np-name','np-init','np-phone'].forEach(id=>document.getElementById(id).value='');toast(`${name} added`);renderPlayers();}
 function delPlayer(id){if(!isAdmin)return;const p=getP(id);if(!confirm(`Remove ${p?.name}?`))return;db.players=db.players.filter(x=>x.id!==id);selP.delete(id);winnerSet.delete(id);saveDB();renderPlayers();toast('Player removed');}
@@ -961,13 +1063,269 @@ function renderHelpContent(){document.getElementById('help-content').innerHTML=h
 
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(type?' '+type:'')+' show';setTimeout(()=>t.classList.remove('show'),2800);}
 
-setTimeout(()=>{document.getElementById('splash').classList.add('hide');renderHome();},1800);
+
+
+// ════════════════════════════════════════════════════════
+// SECURITY SYSTEM v2.8
+// Device-bound PIN — PIN works ONLY on the phone it was set on
+// Uses a device fingerprint (localStorage unique ID) bound to the PIN
+// ════════════════════════════════════════════════════════
+
+const SEC_ADMIN_PIN = '1255';
+const SEC_KEY_PREFIX = 'tc_sec_';  // localStorage key prefix
+
+let secSelectedPlayer = null;  // player object selected on step 1
+let secPinBuf = '';
+let secLoggedInPlayer = null;  // currently logged in player
+let secIsAdmin = false;
+
+// Generate or retrieve a unique device ID for this phone/browser
+function getDeviceId(){
+  let did = localStorage.getItem('tc_device_id');
+  if(!did){
+    did = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,10);
+    localStorage.setItem('tc_device_id', did);
+  }
+  return did;
+}
+
+// Get the PIN storage key for a player on THIS device only
+function pinKey(playerId){
+  return SEC_KEY_PREFIX + getDeviceId() + '_' + playerId;
+}
+
+// Check if player has set a PIN on this device
+function playerHasPIN(playerId){
+  return !!localStorage.getItem(pinKey(playerId));
+}
+
+// Get stored PIN for player on this device
+function getStoredPIN(playerId){
+  return localStorage.getItem(pinKey(playerId));
+}
+
+// Store PIN for player on this device
+function storePIN(playerId, pin){
+  localStorage.setItem(pinKey(playerId), pin);
+}
+
+// ── STEP 1: Render player selection grid ──
+function secRenderPlayerGrid(){
+  const grid = document.getElementById('sec-pgrid');
+  if(!grid) return;
+  if(!db.players.length){
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:12px;padding:20px">No players found.<br>Admin must add players first.</div>';
+    return;
+  }
+  grid.innerHTML = db.players.map(p => {
+    const hasPIN = playerHasPIN(p.id);
+    return `<div class="sec-pbtn" onclick="secSelectPlayer('${p.id}')">
+      <div class="sec-pini">${p.initials}</div>
+      <div class="sec-pname">${p.name.replace('Mr. ','').replace('Mr.','')}</div>
+      <div style="font-size:9px;color:${hasPIN?'var(--accent)':'var(--gold)'};margin-top:3px">${hasPIN?'● PIN set':'○ New'}</div>
+    </div>`;
+  }).join('') +
+  // Admin option at end
+  `<div class="sec-pbtn" onclick="secSelectAdmin()" style="border-color:var(--gold);background:rgba(240,180,41,.05)">
+    <div class="sec-pini" style="color:var(--gold)">AD</div>
+    <div class="sec-pname">Admin</div>
+    <div style="font-size:9px;color:var(--gold);margin-top:3px">● PIN 1255</div>
+  </div>`;
+}
+
+// ── Player tapped on step 1 ──
+function secSelectPlayer(pid){
+  const p = getP(pid);
+  if(!p) return;
+  secSelectedPlayer = p;
+  secIsAdmin = false;
+  // Highlight selected
+  document.querySelectorAll('.sec-pbtn').forEach(b => b.classList.remove('sel'));
+  event.currentTarget.classList.add('sel');
+  // Move to step 2
+  setTimeout(() => secShowStep2(p), 180);
+}
+
+function secSelectAdmin(){
+  secSelectedPlayer = {id:'__admin__', name:'Admin', initials:'AD'};
+  secIsAdmin = true;
+  document.querySelectorAll('.sec-pbtn').forEach(b => b.classList.remove('sel'));
+  event.currentTarget.classList.add('sel');
+  setTimeout(() => secShowStep2(secSelectedPlayer), 180);
+}
+
+function secShowStep2(p){
+  document.getElementById('sec-step1').style.display = 'none';
+  document.getElementById('sec-step2').style.display = 'block';
+  secPinBuf = '';
+  updateSecDots();
+  document.getElementById('sec-err2').textContent = '';
+  document.getElementById('sec-ok2').textContent = '';
+
+  if(secIsAdmin){
+    document.getElementById('sec-pin-label').textContent = 'ENTER ADMIN PIN';
+    document.getElementById('sec-newpin-msg').style.display = 'none';
+  } else {
+    const isNew = !playerHasPIN(p.id);
+    document.getElementById('sec-pin-label').textContent = isNew ? 'CREATE YOUR PIN' : 'ENTER YOUR PIN';
+    document.getElementById('sec-newpin-msg').style.display = isNew ? 'block' : 'none';
+    if(isNew){
+      document.getElementById('sec-ok2').textContent = 'First time on this phone — set your PIN';
+    }
+  }
+}
+
+function secBack(){
+  document.getElementById('sec-step2').style.display = 'none';
+  document.getElementById('sec-step1').style.display = 'block';
+  secSelectedPlayer = null;
+  secPinBuf = '';
+  document.getElementById('sec-err2').textContent = '';
+}
+
+// ── PIN keypad ──
+function secKey(k){
+  if(k === 'clr'){ secPinBuf = secPinBuf.slice(0,-1); updateSecDots(); return; }
+  if(secPinBuf.length >= 4) return;
+  secPinBuf += k;
+  updateSecDots();
+  if(secPinBuf.length === 4) setTimeout(secValidate, 200);
+}
+
+function updateSecDots(){
+  [0,1,2,3].forEach(i => {
+    const d = document.getElementById('sd'+i);
+    if(!d) return;
+    d.className = 'sec-dot' + (secPinBuf.length > i ? (secIsAdmin ? ' on adm' : ' on') : '');
+  });
+}
+
+// ── Validate PIN ──
+function secValidate(){
+  const pin = secPinBuf;
+  const err = document.getElementById('sec-err2');
+  const ok  = document.getElementById('sec-ok2');
+
+  if(secIsAdmin){
+    if(pin === SEC_ADMIN_PIN){
+      secGrantAccess({id:'__admin__', name:'Admin', initials:'AD'}, true);
+    } else {
+      err.textContent = 'Wrong admin PIN. Try again.';
+      secPinBuf = ''; updateSecDots();
+    }
+    return;
+  }
+
+  const p = secSelectedPlayer;
+  if(!p){ secPinBuf=''; return; }
+
+  if(!playerHasPIN(p.id)){
+    // First time on this phone — set this as their PIN
+    if(pin.length === 4){
+      storePIN(p.id, pin);
+      ok.textContent = 'PIN created! Welcome ' + p.name;
+      err.textContent = '';
+      setTimeout(() => secGrantAccess(p, false), 800);
+    }
+  } else {
+    // Verify against stored PIN (device-bound)
+    if(pin === getStoredPIN(p.id)){
+      ok.textContent = 'Welcome back, ' + p.name + '!';
+      err.textContent = '';
+      setTimeout(() => secGrantAccess(p, false), 600);
+    } else {
+      err.textContent = 'Wrong PIN. This PIN is bound to your phone only.';
+      secPinBuf = ''; updateSecDots();
+    }
+  }
+}
+
+// ── Grant access ──
+function secGrantAccess(player, adminFlag){
+  secLoggedInPlayer = player;
+  isAdmin = adminFlag;
+  updateAdminUI();
+
+  // Hide overlay
+  document.getElementById('sec-overlay').classList.add('hidden');
+
+  // Show footer bar
+  document.getElementById('sec-footer').style.display = 'flex';
+  document.getElementById('footer-ini').textContent = player.initials;
+  document.getElementById('footer-name').textContent = player.name;
+  if(adminFlag){
+    document.getElementById('footer-ini').style.color = 'var(--gold)';
+  }
+
+  // Store session (within same browser session only — clears on close)
+  sessionStorage.setItem('tc_session', JSON.stringify({id:player.id, admin:adminFlag}));
+
+  // Render home
+  renderHome();
+}
+
+// ── Lock app ──
+function secLock(){
+  secLoggedInPlayer = null;
+  secIsAdmin = false; isAdmin = false;
+  secPinBuf = '';
+  secSelectedPlayer = null;
+  sessionStorage.removeItem('tc_session');
+  // Show overlay again
+  document.getElementById('sec-overlay').classList.remove('hidden');
+  document.getElementById('sec-footer').style.display = 'none';
+  document.getElementById('sec-step1').style.display = 'block';
+  document.getElementById('sec-step2').style.display = 'none';
+  document.getElementById('sec-err1').textContent = '';
+  document.getElementById('sec-err2').textContent = '';
+  updateSecDots();
+  updateAdminUI();
+  secRenderPlayerGrid();
+}
+
+// ── Auto-lock after 30 min idle ──
+let secIdleTimer;
+function resetIdleTimer(){
+  clearTimeout(secIdleTimer);
+  if(secLoggedInPlayer){
+    secIdleTimer = setTimeout(()=>{
+      if(secLoggedInPlayer) secLock();
+    }, 30 * 60 * 1000);
+  }
+}
+['touchstart','click','keydown'].forEach(e => document.addEventListener(e, resetIdleTimer, true));
+
+// ── Balance visibility — players see only own ──
+function canSeeBalance(playerId){
+  if(!secLoggedInPlayer) return false;
+  if(isAdmin) return true;
+  return secLoggedInPlayer.id === playerId;
+}
+
+// ── Check for existing session on load ──
+function secInit(){
+  // Restore session if same browser session
+  const sess = sessionStorage.getItem('tc_session');
+  if(sess){
+    try{
+      const s = JSON.parse(sess);
+      const p = s.id === '__admin__' ? {id:'__admin__',name:'Admin',initials:'AD'} : getP(s.id);
+      if(p){ secGrantAccess(p, s.admin); return; }
+    }catch(e){}
+  }
+  // Show player grid
+  secRenderPlayerGrid();
+}
+
+
+// Init security on load
+setTimeout(()=>{ loadDB(); seedPlayers(); secInit(); document.getElementById('splash').classList.add('hide'); },1800);
 </script>
 
 
 <script>
 // ══ ROBUST iPHONE UPDATE SYSTEM v2.7 ══
-const _VER = 'v2.7';
+const _VER = 'v2.8';
 const _URL = 'https://elangovan2015es-cmd.github.io/towers-badminton/';
 
 // Step 1: Check if this load already has cache-bust param
