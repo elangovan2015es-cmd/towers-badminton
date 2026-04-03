@@ -2,12 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TowersBC">
 <meta name="theme-color" content="#0a0f1a">
-<title>Towers Club Badminton v2.5</title>
+<title>Towers Club Badminton v2.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -320,7 +323,7 @@ input:checked+.slider:before{transform:translateX(20px);}
   <div class="sp-badge"><svg width="144" height="144"><use href="#tc-logo"/></svg></div>
   <div class="sp-title">TOWERS CLUB BC</div>
   <div class="sp-sub">Group A · Anna Nagar · Chennai</div>
-  <div class="sp-ver">v2.5 — April 2026</div>
+  <div class="sp-ver">v2.6 — April 2026</div>
   <div class="sp-spin"></div>
 </div>
 
@@ -334,7 +337,7 @@ input:checked+.slider:before{transform:translateX(20px);}
     <div class="hdr-text">
       <div class="hdr-title">TOWERS BC</div>
       <div class="hdr-meta">
-        <div class="ver-pill">v2.5</div>
+        <div class="ver-pill">v2.6</div>
         <div class="hdr-date" id="hdrDate"></div>
       </div>
     </div>
@@ -610,7 +613,7 @@ input:checked+.slider:before{transform:translateX(20px);}
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION="v2.5";;
+const APP_VERSION="v2.6";
 const ADMIN_PIN='1255';
 const DB_KEY='towersbc_v22';
 
@@ -962,6 +965,80 @@ function renderHelpContent(){document.getElementById('help-content').innerHTML=h
 function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(type?' '+type:'')+' show';setTimeout(()=>t.classList.remove('show'),2800);}
 
 setTimeout(()=>{document.getElementById('splash').classList.add('hide');renderHome();},1800);
+</script>
+
+<script>
+// ── AUTO UPDATE CHECKER FOR iPHONE ──
+// Checks GitHub for new version every time app opens
+// If new version found, shows update banner and reloads
+const CURRENT_VER = 'v2.6';
+const REPO_URL = 'https://elangovan2015es-cmd.github.io/towers-badminton/';
+
+function checkForUpdate(){
+  // Add timestamp to bypass ALL caches
+  const url = REPO_URL + '?_=' + Date.now();
+  fetch(url, {cache:'no-store', headers:{'Cache-Control':'no-cache','Pragma':'no-cache'}})
+    .then(r => r.text())
+    .then(html => {
+      // Extract version from fetched page
+      const match = html.match(/const APP_VERSION="(v[\d.]+)"/);
+      if(match && match[1] && match[1] !== CURRENT_VER){
+        showUpdateBanner(match[1]);
+      }
+    })
+    .catch(()=>{}); // Silent fail if offline
+}
+
+function showUpdateBanner(newVer){
+  // Remove existing banner if any
+  const existing = document.getElementById('update-banner');
+  if(existing) existing.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'update-banner';
+  banner.style.cssText = `
+    position:fixed;top:0;left:0;right:0;z-index:99999;
+    background:linear-gradient(135deg,#f0b429,#e09000);
+    color:#030a05;padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;
+    font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;
+    box-shadow:0 2px 12px rgba(240,180,41,.5);
+  `;
+  banner.innerHTML = `
+    <div>
+      <div style="font-size:14px;font-weight:700">🆕 Update Available — ${newVer}</div>
+      <div style="font-size:11px;font-weight:400;margin-top:1px;opacity:.8">Tap to get the latest version</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="forceReload()" style="background:#030a05;color:#f0b429;border:none;border-radius:8px;padding:8px 14px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:700;cursor:pointer">
+        UPDATE NOW
+      </button>
+      <button onclick="document.getElementById('update-banner').remove()" style="background:rgba(0,0,0,.2);color:#030a05;border:none;border-radius:8px;padding:8px 10px;font-size:12px;cursor:pointer;font-weight:700">
+        ✕
+      </button>
+    </div>
+  `;
+  document.body.prepend(banner);
+}
+
+function forceReload(){
+  // Clear all caches then reload
+  if('caches' in window){
+    caches.keys().then(keys => {
+      return Promise.all(keys.map(k => caches.delete(k)));
+    }).then(()=>{
+      window.location.href = REPO_URL + '?_=' + Date.now();
+    });
+  } else {
+    window.location.href = REPO_URL + '?_=' + Date.now();
+  }
+}
+
+// Check on load (after 3 seconds so app renders first)
+setTimeout(checkForUpdate, 3000);
+
+// Also check every 10 minutes while app is open
+setInterval(checkForUpdate, 10 * 60 * 1000);
 </script>
 </body>
 </html>
