@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TowersBC">
 <meta name="theme-color" content="#0a0f1a">
-<title>Towers Club Badminton v2.2</title>
+<title>Towers Club Badminton v2.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -32,7 +32,7 @@ body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-
 /* HEADER */
 .hdr{position:sticky;top:0;z-index:100;background:linear-gradient(180deg,#0d1522 0%,rgba(10,15,26,.97) 100%);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(10px);}
 .hdr-left{display:flex;align-items:center;gap:10px;}
-.hdr-badge{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;padding:3px;flex-shrink:0;}
+.hdr-badge{width:48px;height:48px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;padding:4px;flex-shrink:0;}
 .hdr-text{}
 .hdr-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--accent);line-height:1.1;}
 .hdr-meta{display:flex;align-items:center;gap:6px;margin-top:1px;}
@@ -320,7 +320,7 @@ input:checked+.slider:before{transform:translateX(20px);}
   <div class="sp-badge"><svg width="144" height="144"><use href="#tc-logo"/></svg></div>
   <div class="sp-title">TOWERS CLUB BC</div>
   <div class="sp-sub">Group A · Anna Nagar · Chennai</div>
-  <div class="sp-ver">v2.2 — April 2026</div>
+  <div class="sp-ver">v2.3 — April 2026</div>
   <div class="sp-spin"></div>
 </div>
 
@@ -330,11 +330,11 @@ input:checked+.slider:before{transform:translateX(20px);}
 <!-- HEADER -->
 <div class="hdr">
   <div class="hdr-left">
-    <div class="hdr-badge"><svg width="34" height="34"><use href="#tc-logo"/></svg></div>
+    <div class="hdr-badge"><svg width="40" height="40"><use href="#tc-logo"/></svg></div>
     <div class="hdr-text">
       <div class="hdr-title">TOWERS BC</div>
       <div class="hdr-meta">
-        <div class="ver-pill">v2.2</div>
+        <div class="ver-pill">v2.3</div>
         <div class="hdr-date" id="hdrDate"></div>
       </div>
     </div>
@@ -357,6 +357,14 @@ input:checked+.slider:before{transform:translateX(20px);}
 
 <!-- ===== HOME ===== -->
 <div class="scr active" id="scr-home">
+  <!-- PROMINENT LOGO BANNER -->
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 0 10px;background:linear-gradient(180deg,rgba(26,35,50,.9) 0%,rgba(10,15,26,0) 100%);margin:-12px -12px 10px;border-bottom:1px solid var(--border)">
+    <div style="width:100px;height:100px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;padding:6px;box-shadow:0 4px 24px rgba(22,199,132,.3);margin-bottom:8px">
+      <svg width="88" height="88"><use href="#tc-logo"/></svg>
+    </div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:var(--accent)">TOWERS CLUB</div>
+    <div style="font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:1px">Badminton · Group A · Anna Nagar</div>
+  </div>
   <div class="sg" style="margin-top:2px">
     <div class="sb"><div class="sn" id="s-games">0</div><div class="sl">Today Games</div></div>
     <div class="sb"><div class="sn gold" id="s-shut">0</div><div class="sl">Shuttles</div></div>
@@ -573,7 +581,7 @@ input:checked+.slider:before{transform:translateX(20px);}
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION='v2.2';
+const APP_VERSION="v2.3";;
 const ADMIN_PIN='1255';
 const DB_KEY='towersbc_v22';
 
@@ -846,4 +854,3 @@ setTimeout(()=>{document.getElementById('splash').classList.add('hide');renderHo
 </script>
 </body>
 </html>
-# towers-badminton
