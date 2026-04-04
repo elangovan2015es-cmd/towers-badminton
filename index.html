@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TowersBC">
 <meta name="theme-color" content="#0a0f1a">
-<title>Towers Club Badminton v2.8</title>
+<title>Towers Club Badminton v3.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -261,6 +261,17 @@ input:checked+.slider:before{transform:translateX(20px);}
 .sec-who{display:flex;align-items:center;gap:7px;background:rgba(22,199,132,.1);border:1px solid rgba(22,199,132,.2);border-radius:20px;padding:4px 11px;}
 .sec-who-ini{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);font-weight:700;}
 .sec-who-name{font-size:12px;color:var(--text);font-weight:500;}
+
+/* ══ SYNC STATUS ══ */
+.sync-bar{display:flex;align-items:center;gap:6px;padding:4px 14px;background:rgba(22,199,132,.06);border-bottom:1px solid var(--border);font-size:10px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.sync-dot.online{background:var(--accent);}
+.sync-dot.syncing{background:var(--gold);animation:pulse-sync .8s infinite;}
+.sync-dot.offline{background:var(--red);}
+.sync-dot.error{background:var(--red);}
+@keyframes pulse-sync{0%,100%{opacity:1;}50%{opacity:.3;}}
+.sync-txt{color:var(--muted);}
+.sync-time{margin-left:auto;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -404,7 +415,7 @@ input:checked+.slider:before{transform:translateX(20px);}
   <div class="sp-badge"><svg width="144" height="144"><use href="#tc-logo"/></svg></div>
   <div class="sp-title">TOWERS CLUB BC</div>
   <div class="sp-sub">Group A · Anna Nagar · Chennai</div>
-  <div class="sp-ver">v2.8 — April 2026</div>
+  <div class="sp-ver">v3.0 — April 2026</div>
   <div class="sp-spin"></div>
 </div>
 
@@ -418,13 +429,14 @@ input:checked+.slider:before{transform:translateX(20px);}
     <div class="hdr-text">
       <div class="hdr-title">TOWERS BC</div>
       <div class="hdr-meta">
-        <div class="ver-pill">v2.8</div>
+        <div class="ver-pill">v3.0</div>
         <div class="hdr-date" id="hdrDate"></div>
       </div>
     </div>
   </div>
   <div class="hdr-right">
     <button class="btn-sm bs-b" style="padding:5px 8px;font-size:11px" onclick="openHelp()">❓ Help</button>
+    <button class="btn-sm bs-o" id="dbSetupBtn" style="padding:5px 8px;font-size:11px;display:none" onclick="showGASSetup()" title="Configure central database">🗄️ DB</button>
     <div class="admin-badge off" id="adminBadge" onclick="openAdminModal()">🔒 ADMIN</div>
   </div>
 </div>
@@ -437,6 +449,14 @@ input:checked+.slider:before{transform:translateX(20px);}
   <button class="nb" onclick="goTo('stock')" id="nb-stock"><span class="ni">📦</span>Stock</button>
   <button class="nb" onclick="goTo('champs')" id="nb-champs"><span class="ni">🏆</span>Champs</button>
   <button class="nb" onclick="goTo('report')" id="nb-report"><span class="ni">📋</span>Report</button>
+</div>
+
+
+<!-- SYNC STATUS BAR -->
+<div class="sync-bar" id="syncBar">
+  <div class="sync-dot online" id="syncDot"></div>
+  <span class="sync-txt" id="syncTxt">Connecting to central database...</span>
+  <span class="sync-time" id="syncTime"></span>
 </div>
 
 <!-- ===== HOME ===== -->
@@ -466,6 +486,7 @@ input:checked+.slider:before{transform:translateX(20px);}
     <div class="ct">QUICK ACTIONS</div>
     <div class="row mb8"><button class="btn btn-g f1" onclick="goTo('game')">+ Record Game</button></div>
     <button class="btn btn-wap" onclick="shareWA()">📤 Share Day Report on WhatsApp</button>
+    <button class="btn btn-ghost" onclick="manualSync()" style="margin-top:8px;font-size:13px">🔄 Sync Now</button>
   </div>
 </div>
 
@@ -694,7 +715,7 @@ input:checked+.slider:before{transform:translateX(20px);}
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION="v2.8";
+const APP_VERSION="v3.0";
 const ADMIN_PIN='1255';
 const DB_KEY='towersbc_v22';
 
@@ -1035,7 +1056,13 @@ function printWeekReport(wk){
 function openAdminModal(){if(isAdmin){isAdmin=false;updateAdminUI();toast('Admin logged out');render(curScreen);return;}pinBuf='';updatePinDots();document.getElementById('pin-msg').textContent='Enter 4-digit PIN';document.getElementById('pin-msg').style.color='var(--muted)';openModal('adminModal');}
 function pinKey(k){if(k==='clr'){pinBuf=pinBuf.slice(0,-1);updatePinDots();return;}if(pinBuf.length>=4)return;pinBuf+=k;updatePinDots();if(pinBuf.length===4){setTimeout(()=>{if(pinBuf===ADMIN_PIN){isAdmin=true;updateAdminUI();closeModal('adminModal');toast('Admin access granted ✓');render(curScreen);}else{document.getElementById('pin-msg').textContent='Wrong PIN';document.getElementById('pin-msg').style.color='var(--red)';pinBuf='';updatePinDots();}},200);}}
 function updatePinDots(){[0,1,2,3].forEach(i=>document.getElementById('pd'+i).className='pin-dot'+(pinBuf.length>i?' filled':''));}
-function updateAdminUI(){const b=document.getElementById('adminBadge');b.textContent=isAdmin?'✓ ADMIN':'🔒 ADMIN';b.className=isAdmin?'admin-badge':'admin-badge off';}
+function updateAdminUI(){
+  const b=document.getElementById('adminBadge');
+  b.textContent=isAdmin?'✓ ADMIN':'🔒 ADMIN';
+  b.className=isAdmin?'admin-badge':'admin-badge off';
+  const dbBtn=document.getElementById('dbSetupBtn');
+  if(dbBtn) dbBtn.style.display=isAdmin?'inline-block':'none';
+}
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
@@ -1260,6 +1287,8 @@ function secGrantAccess(player, adminFlag){
   // Store session (within same browser session only — clears on close)
   sessionStorage.setItem('tc_session', JSON.stringify({id:player.id, admin:adminFlag}));
 
+  // Start live sync
+  startAutoSync();
   // Render home
   renderHome();
 }
@@ -1324,8 +1353,252 @@ setTimeout(()=>{ loadDB(); seedPlayers(); secInit(); document.getElementById('sp
 
 
 <script>
+
+
+// ════════════════════════════════════════════════════════════
+// TOWERS BC v3.0 — GOOGLE SHEETS SYNC ENGINE
+// Central database — all phones read/write to one Google Sheet
+// ════════════════════════════════════════════════════════════
+
+// ── PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE ──
+// After deploying your Apps Script, replace the URL below
+let GAS_URL = localStorage.getItem('tc_gas_url') || '';
+
+let syncOnline = false;
+let lastSyncTime = null;
+let syncInterval = null;
+
+// ── Sync status display ──
+function setSyncStatus(state, msg){
+  const dot = document.getElementById('syncDot');
+  const txt = document.getElementById('syncTxt');
+  const time = document.getElementById('syncTime');
+  if(!dot||!txt) return;
+  dot.className = 'sync-dot ' + state;
+  txt.textContent = msg;
+  if(state==='online'&&lastSyncTime){
+    time.textContent = 'Synced ' + fmtTime(lastSyncTime);
+  } else {
+    time.textContent = '';
+  }
+}
+
+// ── Check if GAS URL is configured ──
+function isConfigured(){ return GAS_URL && GAS_URL.startsWith('https://'); }
+
+// ── FETCH ALL DATA FROM GOOGLE SHEETS ──
+async function syncFromServer(){
+  if(!isConfigured()){
+    setSyncStatus('offline','⚠️ Database not configured — tap Settings to add URL');
+    return false;
+  }
+  setSyncStatus('syncing','Syncing...');
+  try {
+    const resp = await fetch(GAS_URL + '?action=getAll&_=' + Date.now(), {
+      method:'GET', cache:'no-store'
+    });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if(data.error) throw new Error(data.error);
+
+    // Merge server data into local db
+    if(data.players && data.players.length){
+      db.players = data.players.map(p => ({
+        id: p.id, name: p.name, initials: p.initials,
+        phone: p.phone||'', joinDate: p.joinDate||''
+      }));
+    }
+    if(data.games && data.games.length){
+      db.games = data.games.map(g => ({
+        id: g.id, date: g.date, weekKey: g.weekKey,
+        players: g.players ? g.players.split(',') : [],
+        shuttles: Number(g.shuttles), ts: Number(g.ts),
+        score: g.score ? JSON.parse(g.score) : null,
+        winners: g.winners ? g.winners.split(',').filter(Boolean) : [],
+        locked: g.locked === true || g.locked === 'TRUE'
+      }));
+    }
+    if(data.purchases && data.purchases.length){
+      db.purchases = data.purchases.map(p => ({
+        id: p.id, date: p.date, weekKey: p.weekKey,
+        playerId: p.playerId, boxes: Number(p.boxes),
+        spb: Number(p.spb)||10, ts: Number(p.ts)
+      }));
+    }
+    if(data.weeks && data.weeks.length){
+      db.weeks = data.weeks.map(w => ({
+        weekKey: w.weekKey, label: w.label||'',
+        locked: w.locked === true || w.locked === 'TRUE',
+        lockedAt: w.lockedAt||null
+      }));
+    }
+    if(data.settings && data.settings.openingStock !== undefined){
+      db.openingStock = Number(data.settings.openingStock)||0;
+    }
+
+    saveDB();
+    syncOnline = true;
+    lastSyncTime = Date.now();
+    setSyncStatus('online', '✅ Live — All phones synced');
+    render(curScreen);
+    return true;
+  } catch(err) {
+    syncOnline = false;
+    setSyncStatus('error', '❌ Sync failed — using local data');
+    console.error('Sync error:', err);
+    return false;
+  }
+}
+
+// ── PUSH RECORD TO SERVER ──
+async function pushToServer(action, payload){
+  if(!isConfigured()) return false;
+  try {
+    const resp = await fetch(GAS_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action, ...payload})
+    });
+    const data = await resp.json();
+    return data.success === true;
+  } catch(err) {
+    console.error('Push error:', err);
+    return false;
+  }
+}
+
+// ── START AUTO SYNC every 30 seconds ──
+function startAutoSync(){
+  if(syncInterval) clearInterval(syncInterval);
+  syncFromServer(); // immediate first sync
+  syncInterval = setInterval(syncFromServer, 30000);
+}
+
+// ── OVERRIDE: recordGame to also push to server ──
+const _origRecordGame = recordGame;
+async function recordGame(){
+  if(selP.size !== 4){ toast('Select exactly 4 players','err'); return; }
+  const stock = stockLeft();
+  if(sCount > stock){ toast('Only ' + stock + ' shuttles in stock!','err'); return; }
+  const gameDate = document.getElementById('game-date').value || todayStr();
+  const wk = weekKey(gameDate);
+  if(isWeekLocked(wk)){ toast('This week is locked!','err'); return; }
+  ensureWeek(wk);
+  const scoreOn = document.getElementById('score-toggle').checked;
+  const gameObj = {
+    id:uid(), date:gameDate, weekKey:wk,
+    players:[...selP], shuttles:sCount, ts:Date.now(),
+    score: scoreOn ? {a:scoreA, b:scoreB} : null,
+    winners: scoreOn && winnerSet.size===2 ? [...winnerSet] : []
+  };
+  // Save locally first (instant UI response)
+  db.games.push(gameObj);
+  saveDB();
+  toast('Game recorded — ' + sCount + ' shuttle' + (sCount>1?'s':''));
+  resetEntry(); renderTodayLog(); renderHome();
+  // Push to server in background
+  setSyncStatus('syncing','Saving to central database...');
+  const ok = await pushToServer('addGame', gameObj);
+  if(ok){ setSyncStatus('online','✅ Saved to central database'); lastSyncTime=Date.now(); }
+  else  { setSyncStatus('error','⚠️ Saved locally — will sync when online'); }
+}
+
+// ── OVERRIDE: delGame to also delete from server ──
+async function delGame(id){
+  if(!isAdmin){ toast('Admin only','err'); return; }
+  db.games = db.games.filter(g => g.id !== id);
+  saveDB(); renderTodayLog(); renderHome(); toast('Game removed');
+  setSyncStatus('syncing','Removing from central database...');
+  const ok = await pushToServer('deleteGame', {id});
+  if(ok) setSyncStatus('online','✅ Synced');
+  else   setSyncStatus('error','⚠️ Removed locally — will sync when online');
+}
+
+// ── OVERRIDE: addPlayer to also push ──
+async function addPlayer(){
+  if(!isAdmin){ toast('Admin only','err'); return; }
+  const name = document.getElementById('np-name').value.trim();
+  const initials = document.getElementById('np-init').value.trim().toUpperCase();
+  const phone = document.getElementById('np-phone').value.trim();
+  if(!name||!initials){ toast('Name and initials required','err'); return; }
+  if(db.players.find(p=>p.initials===initials)){ toast('Initials already used','err'); return; }
+  const playerObj = {id:uid(), name, initials, phone, joinDate:todayStr()};
+  db.players.push(playerObj);
+  saveDB();
+  ['np-name','np-init','np-phone'].forEach(id=>document.getElementById(id).value='');
+  toast(name + ' added'); renderPlayers();
+  const ok = await pushToServer('addPlayer', playerObj);
+  if(ok) setSyncStatus('online','✅ Player saved to central database');
+  else   setSyncStatus('error','⚠️ Saved locally — sync when online');
+}
+
+// ── OVERRIDE: addBox to also push ──
+async function addBox(){
+  if(!isAdmin){ toast('Admin only','err'); return; }
+  const pid = document.getElementById('box-player').value;
+  const boxes = parseInt(document.getElementById('box-count').value)||1;
+  const spb = getEffectiveSPB();
+  if(!pid){ toast('Select a player','err'); return; }
+  if(!spb||spb<1){ toast('Enter shuttles per box','err'); return; }
+  const p = getP(pid);
+  const wk = weekKey(todayStr());
+  ensureWeek(wk);
+  const purchaseObj = {id:uid(), date:todayStr(), weekKey:wk, playerId:pid, boxes, spb, ts:Date.now()};
+  db.purchases.push(purchaseObj);
+  saveDB();
+  toast(boxes + ' box' + (boxes>1?'es':'') + ' · ' + boxes*spb + ' shuttles credited to ' + p.name);
+  renderPlayers(); renderStock();
+  sendBoxWA(p, boxes, spb);
+  const ok = await pushToServer('addPurchase', purchaseObj);
+  if(ok) setSyncStatus('online','✅ Purchase saved to central database');
+  else   setSyncStatus('error','⚠️ Saved locally — sync when online');
+}
+
+// ── OVERRIDE: confirmLock to also push ──
+const _origConfirmLock = confirmLock;
+async function confirmLock(){
+  if(!pendingLockWeek) return;
+  const wk = pendingLockWeek;
+  ensureWeek(wk);
+  const widx = db.weeks.findIndex(x => x.weekKey === wk);
+  db.weeks[widx].locked = true;
+  db.weeks[widx].lockedAt = Date.now();
+  db.games.forEach(g => { if(g.weekKey===wk) g.locked=true; });
+  saveDB();
+  closeModal('lockModal');
+  toast('Week locked 🔒');
+  renderReport();
+  setTimeout(() => printWeekReport(wk), 400);
+  const ok = await pushToServer('lockWeek', {
+    weekKey: wk, label: weekLabel(wk), lockedAt: Date.now()
+  });
+  if(ok) setSyncStatus('online','✅ Week locked on central database');
+  else   setSyncStatus('error','⚠️ Locked locally — sync when online');
+}
+
+// ── GAS URL SETUP (Admin only) ──
+function showGASSetup(){
+  if(!isAdmin){ toast('Admin only — login first','err'); return; }
+  const url = prompt('Paste your Google Apps Script Web App URL here:\n\n(Get this from Apps Script → Deploy → Web App → Copy URL)', GAS_URL||'');
+  if(url && url.startsWith('https://')){
+    GAS_URL = url.trim();
+    localStorage.setItem('tc_gas_url', GAS_URL);
+    toast('Database URL saved! Syncing now...');
+    startAutoSync();
+  } else if(url !== null){
+    toast('Invalid URL — must start with https://','err');
+  }
+}
+
+// ── Manual sync button ──
+function manualSync(){
+  toast('Syncing with central database...');
+  syncFromServer();
+}
+
+
 // ══ ROBUST iPHONE UPDATE SYSTEM v2.7 ══
-const _VER = 'v2.8';
+const _VER = 'v3.0';
 const _URL = 'https://elangovan2015es-cmd.github.io/towers-badminton/';
 
 // Step 1: Check if this load already has cache-bust param
