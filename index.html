@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TowersBC">
 <meta name="theme-color" content="#0a0f1a">
-<title>Towers Club Badminton v3.5</title>
+<title>Towers Club Badminton v3.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -734,7 +734,7 @@ input:checked+.slider:before{transform:translateX(20px);}
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION="v3.5";
+const APP_VERSION="v3.6";
 const ADMIN_PIN='1255';
 const DB_KEY='towersbc_v33';
 
@@ -768,7 +768,8 @@ function mergeMasterPlayers(){
       db.players.push({id:uid(), ...mp});
       changed = true;
     } else {
-      if(existing.openingBalance === undefined || existing.openingBalance === null){
+      // Override if server returned 0 but master has a real value (fixes blank F1 header bug)
+      if(existing.openingBalance === undefined || existing.openingBalance === null || (existing.openingBalance === 0 && mp.openingBalance !== 0)){
         existing.openingBalance = mp.openingBalance;
         changed = true;
       }
@@ -966,7 +967,25 @@ function renderPlayers(){
   const balDisplay=visible?`<span class="bv ${cls}">${bal>=0?'+':''}${bal.toFixed(1)}</span>`:`<span class="bv bv-zer" title="Login to see">🔒</span>`;
   const consumedDisplay=visible?`${s.consumed.toFixed(1)} used`:'—';
   return `<div class="br"><span class="br-ini">${p.initials}</span><span class="br-name">${p.name}</span><span class="br-games">${s.games}g ${s.wins?`🏆${s.wins}W`:''} ${consumedDisplay}</span>${balDisplay}</div>`;
-}).join('');
+}).join('') + (()=>{
+  // Totals row
+  let totalCredit=0, totalOwed=0;
+  db.players.forEach(p=>{
+    const s=stats[p.id]||{consumed:0,contributed:0};
+    const bal=s.contributed-s.consumed;
+    if(bal>0) totalCredit+=bal;
+    else if(bal<0) totalOwed+=Math.abs(bal);
+  });
+  const net=totalCredit-totalOwed;
+  return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(240,180,41,.07);border:1px solid rgba(240,180,41,.2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;color:var(--gold)">GROUP TOTALS</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-size:10px;color:var(--muted)">In Credit:</span><span class="bv bv-pos">+${totalCredit.toFixed(1)}</span>
+      <span style="font-size:10px;color:var(--muted)">Owed:</span><span class="bv bv-neg">-${totalOwed.toFixed(1)}</span>
+      <span style="font-size:10px;color:var(--muted)">Net:</span><span class="bv ${net>=0?'bv-pos':'bv-neg'}">${net>=0?'+':''}${net.toFixed(1)}</span>
+    </div>
+  </div>`;
+})();
 }
 function addPlayer(){if(!isAdmin){toast('Admin only','err');return;}const name=document.getElementById('np-name').value.trim();const initials=document.getElementById('np-init').value.trim().toUpperCase();const phone=document.getElementById('np-phone').value.trim();if(!name||!initials){toast('Name and initials required','err');return;}if(db.players.find(p=>p.initials===initials)){toast('Initials already used','err');return;}db.players.push({id:uid(),name,initials,phone,joinDate:todayStr()});saveDB();['np-name','np-init','np-phone'].forEach(id=>document.getElementById(id).value='');toast(`${name} added`);renderPlayers();}
 function delPlayer(id){if(!isAdmin)return;const p=getP(id);if(!confirm(`Remove ${p?.name}?`))return;db.players=db.players.filter(x=>x.id!==id);selP.delete(id);winnerSet.delete(id);saveDB();renderPlayers();toast('Player removed');}
@@ -1803,7 +1822,7 @@ function manualSync(){
 
 
 // ══ ROBUST iPHONE UPDATE SYSTEM v2.7 ══
-const _VER = 'v3.5';
+const _VER = 'v3.6';
 const _URL = 'https://elangovan2015es-cmd.github.io/towers-badminton/';
 
 // Step 1: Check if this load already has cache-bust param
