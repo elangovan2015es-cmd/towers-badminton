@@ -126,15 +126,24 @@ input[type=date]{color-scheme:dark;}
 .winner-tag{display:inline-block;background:rgba(240,180,41,.15);color:var(--gold);font-size:9px;border-radius:4px;padding:1px 5px;margin-top:2px;font-weight:600;}
 
 /* BALANCE ROW */
-.br{display:flex;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);gap:7px;}
+.br{padding:10px 0;border-bottom:1px solid var(--border);}
 .br:last-child{border-bottom:none;}
+.br-top{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
 .br-ini{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);background:var(--border);border-radius:5px;padding:2px 5px;min-width:28px;text-align:center;}
 .br-name{font-size:13px;font-weight:500;flex:1;}
-.br-games{font-size:10px;color:var(--muted);}
+.br-games-badge{font-size:10px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:1px 6px;}
+.br-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;}
+.br-stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 7px;text-align:center;}
+.br-stat-val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;}
+.br-stat-lbl{font-size:8px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-top:1px;}
 .bv{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;}
 .bv-pos{background:rgba(22,199,132,.15);color:var(--accent);}
 .bv-neg{background:rgba(239,68,68,.15);color:var(--red);}
 .bv-zer{background:var(--border);color:var(--muted);}
+.stat-pos{color:var(--accent);}
+.stat-neg{color:var(--red);}
+.stat-zer{color:var(--muted);}
+.stat-used{color:var(--gold);}
 
 /* LEADERBOARD */
 .lb-row{display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:6px;gap:8px;}
@@ -962,11 +971,44 @@ function renderPlayers(){
   document.getElementById('balance-list').innerHTML=sorted.map(p=>{
   const s=stats[p.id]||{consumed:0,contributed:0,games:0,wins:0};
   const bal=s.contributed-s.consumed;
-  const cls=bal>0?'bv-pos':bal<0?'bv-neg':'bv-zer';
+  const ob=parseFloat(p.openingBalance)||0;
+  const usedAfterOpen=s.consumed - (ob<0?Math.abs(ob):0);
   const visible=canSeeBalance(p.id);
-  const balDisplay=visible?`<span class="bv ${cls}">${bal>=0?'+':''}${bal.toFixed(1)}</span>`:`<span class="bv bv-zer" title="Login to see">🔒</span>`;
-  const consumedDisplay=visible?`${s.consumed.toFixed(1)} used`:'—';
-  return `<div class="br"><span class="br-ini">${p.initials}</span><span class="br-name">${p.name}</span><span class="br-games">${s.games}g ${s.wins?`🏆${s.wins}W`:''} ${consumedDisplay}</span>${balDisplay}</div>`;
+
+  const obVal = ob>=0 ? `+${ob.toFixed(1)}` : `${ob.toFixed(1)}`;
+  const obCls = ob>0?'stat-pos':ob<0?'stat-neg':'stat-zer';
+  const usedVal = s.consumed.toFixed(1);
+  const balVal = bal>=0 ? `+${bal.toFixed(1)}` : `${bal.toFixed(1)}`;
+  const balCls = bal>0?'stat-pos':bal<0?'stat-neg':'stat-zer';
+  const closingBorder = bal>0?'border-color:rgba(22,199,132,.35)':bal<0?'border-color:rgba(239,68,68,.35)':'';
+
+  const winsTag = s.wins ? `<span style="color:var(--gold);font-size:10px">🏆${s.wins}W</span>` : '';
+
+  if(!visible) return `<div class="br">
+    <div class="br-top"><span class="br-ini">${p.initials}</span><span class="br-name">${p.name}</span><span class="bv bv-zer">🔒 Login to view</span></div>
+  </div>`;
+
+  return `<div class="br">
+    <div class="br-top">
+      <span class="br-ini">${p.initials}</span>
+      <span class="br-name">${p.name}</span>
+      <span class="br-games-badge">${s.games} games ${winsTag}</span>
+    </div>
+    <div class="br-stats">
+      <div class="br-stat">
+        <div class="br-stat-val ${obCls}">${obVal}</div>
+        <div class="br-stat-lbl">Op. Balance</div>
+      </div>
+      <div class="br-stat">
+        <div class="br-stat-val stat-used">−${usedVal}</div>
+        <div class="br-stat-lbl">Used</div>
+      </div>
+      <div class="br-stat" style="${closingBorder}">
+        <div class="br-stat-val ${balCls}">${balVal}</div>
+        <div class="br-stat-lbl">Closing Bal.</div>
+      </div>
+    </div>
+  </div>`;
 }).join('') + (()=>{
   // Totals row
   let totalCredit=0, totalOwed=0;
