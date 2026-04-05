@@ -827,6 +827,29 @@ function seedPlayers(){
 seedPlayers();
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+
+// Format a shuttle balance as whole + quarter fraction (e.g. 6.25 → "6¼", 10.75 → "10¾", 3.5 → "3½")
+function fmtQ(val){
+  const sign = val < 0 ? '−' : '+';
+  const abs = Math.abs(val);
+  const whole = Math.floor(abs);
+  const frac = Math.round((abs - whole) * 4); // 0,1,2,3,4
+  const qMap = {0:'', 1:'¼', 2:'½', 3:'¾', 4:''};
+  const wholeAdj = frac === 4 ? whole + 1 : whole;
+  const fracStr = frac === 4 ? '' : qMap[frac];
+  const num = wholeAdj === 0 && fracStr === '' ? '0' : (wholeAdj > 0 ? wholeAdj : '') + fracStr;
+  return sign + num;
+}
+// For "used" (no sign prefix needed)
+function fmtQu(val){
+  const abs = Math.abs(val);
+  const whole = Math.floor(abs);
+  const frac = Math.round((abs - whole) * 4);
+  const qMap = {0:'', 1:'¼', 2:'½', 3:'¾', 4:''};
+  const wholeAdj = frac === 4 ? whole + 1 : whole;
+  const fracStr = frac === 4 ? '' : qMap[frac];
+  return (wholeAdj > 0 ? wholeAdj : (fracStr?'':'0')) + fracStr;
+}
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
 function fmtTime(ts){return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
@@ -975,10 +998,10 @@ function renderPlayers(){
   const usedAfterOpen=s.consumed - (ob<0?Math.abs(ob):0);
   const visible=canSeeBalance(p.id);
 
-  const obVal = ob>=0 ? `+${ob.toFixed(1)}` : `${ob.toFixed(1)}`;
+  const obVal = ob>=0 ? `+${ob}` : `${ob}`;
   const obCls = ob>0?'stat-pos':ob<0?'stat-neg':'stat-zer';
-  const usedVal = s.consumed.toFixed(1);
-  const balVal = bal>=0 ? `+${bal.toFixed(1)}` : `${bal.toFixed(1)}`;
+  const usedVal = s.consumed % 1 === 0 ? s.consumed.toFixed(0) : s.consumed.toString();
+  const balVal = bal>=0 ? `+${Math.round(bal*100)/100}` : `${Math.round(bal*100)/100}`;
   const balCls = bal>0?'stat-pos':bal<0?'stat-neg':'stat-zer';
   const closingBorder = bal>0?'border-color:rgba(22,199,132,.35)':bal<0?'border-color:rgba(239,68,68,.35)':'';
 
@@ -1022,9 +1045,9 @@ function renderPlayers(){
   return `<div style="margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(240,180,41,.07);border:1px solid rgba(240,180,41,.2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
     <span style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;color:var(--gold)">GROUP TOTALS</span>
     <div style="display:flex;gap:8px;align-items:center">
-      <span style="font-size:10px;color:var(--muted)">In Credit:</span><span class="bv bv-pos">+${totalCredit.toFixed(1)}</span>
-      <span style="font-size:10px;color:var(--muted)">Owed:</span><span class="bv bv-neg">-${totalOwed.toFixed(1)}</span>
-      <span style="font-size:10px;color:var(--muted)">Net:</span><span class="bv ${net>=0?'bv-pos':'bv-neg'}">${net>=0?'+':''}${net.toFixed(1)}</span>
+      <span style="font-size:10px;color:var(--muted)">In Credit:</span><span class="bv bv-pos">+${totalCredit}</span>
+      <span style="font-size:10px;color:var(--muted)">Owed:</span><span class="bv bv-neg">−${totalOwed}</span>
+      <span style="font-size:10px;color:var(--muted)">Net:</span><span class="bv ${net>=0?'bv-pos':'bv-neg'}">${net>=0?'+':''}${Math.round(net*100)/100}</span>
     </div>
   </div>`;
 })();
