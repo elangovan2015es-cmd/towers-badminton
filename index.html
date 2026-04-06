@@ -1079,7 +1079,21 @@ function renderPlayers(){
 })();
 }
 function addPlayer(){if(!isAdmin){toast('Admin only','err');return;}const name=document.getElementById('np-name').value.trim();const initials=document.getElementById('np-init').value.trim().toUpperCase();const phone=document.getElementById('np-phone').value.trim();if(!name||!initials){toast('Name and initials required','err');return;}if(db.players.find(p=>p.initials===initials)){toast('Initials already used','err');return;}db.players.push({id:uid(),name,initials,phone,joinDate:todayStr()});saveDB();['np-name','np-init','np-phone'].forEach(id=>document.getElementById(id).value='');toast(`${name} added`);renderPlayers();}
-function delPlayer(id){if(!isAdmin)return;const p=getP(id);if(!confirm(`Remove ${p?.name}?`))return;db.players=db.players.filter(x=>x.id!==id);selP.delete(id);winnerSet.delete(id);saveDB();renderPlayers();toast('Player removed');}
+async function delPlayer(id){
+  if(!isAdmin)return;
+  const p=getP(id);
+  if(!confirm(`Remove ${p?.name}?`))return;
+  db.players=db.players.filter(x=>x.id!==id);
+  selP.delete(id);
+  winnerSet.delete(id);
+  saveDB();
+  renderPlayers();
+  toast('Player removed');
+  // Also delete from Google Sheet so it doesn't come back on next sync
+  const ok = await pushToServer('deletePlayer', {id});
+  if(ok) setSyncStatus('online','✅ Player removed from central database');
+  else   setSyncStatus('error','⚠️ Removed locally — sync when online');
+}
 function selectSPB(val){
   shuttlesPerBox=val==='custom'?null:val;
   ['10','12','custom'].forEach(v=>{
@@ -1650,10 +1664,17 @@ async function syncFromServer(){
         phone: p.phone||'', joinDate: p.joinDate||'2026-04-04',
         openingBalance: parseFloat(p.openingBalance)||0
       }));
-      // Keep local players not yet on server
+      // Replace local players with server data
       db.players = serverPlayers;
-      // Then merge master to add any missing
+      // Merge master list for any missing players
       mergeMasterPlayers();
+      // Deduplicate by initials — keep last occurrence (server wins)
+      const seen = {};
+      db.players = db.players.filter(p => {
+        if(seen[p.initials]) return false;
+        seen[p.initials] = true;
+        return true;
+      });
     }
     if(data.games && data.games.length){
       db.games = data.games.map(g => ({
@@ -1718,6 +1739,13 @@ async function autoInitializeSheet(){
     setSyncStatus('error','❌ GAS URL not configured');
     return;
   }
+  // Guard: only run full init ONCE per GAS URL to prevent duplicate rows in Sheet
+  const initKey = 'tc_sheet_init_' + GAS_URL.slice(-20);
+  if(localStorage.getItem(initKey)){
+    // Already initialised — just sync
+    syncFromServer();
+    return;
+  }
   setSyncStatus('syncing','🔄 Initializing Google Sheet...');
   try {
     // Step 1: Setup sheets (create headers if needed)
@@ -1743,6 +1771,9 @@ async function autoInitializeSheet(){
     // Step 5: Push opening stock
     await fetchGAS('setOpening', {value: db.openingStock});
     
+    // Mark as initialized — never auto-push again for this GAS URL
+    localStorage.setItem(initKey, '1');
+    
     setSyncStatus('online', '✅ Google Sheet initialized — ' + pushed + ' players pushed');
     toast('✅ Google Sheet updated with all players!');
     lastSyncTime = Date.now();
@@ -1755,170 +1786,6 @@ async function autoInitializeSheet(){
     console.error('Init error:', err);
   }
 }
-
-// Simple GAS fetch helper
-async function fetchGAS(action, payload){
-  const params = new URLSearchParams({
-    action: action,
-    data: JSON.stringify(payload),
-    _: Date.now()
-  });
-  try {
-    const resp = await fetch(GAS_URL + '?' + params.toString(), {
-      method: 'GET',
-      cache: 'no-store'
-    });
-    if(!resp.ok) throw new Error('HTTP ' + resp.status);
-    const text = await resp.text();
-    try {
-      const data = JSON.parse(text);
-      return data.success || data.ok || !data.error;
-    } catch(e){
-      return true;
-    }
-  } catch(err){
-    console.error('fetchGAS error:', action, err);
-    return false;
-  }
-}
-
-
-
-// ── START AUTO SYNC every 30 seconds ──
-function startAutoSync(){
-  if(syncInterval) clearInterval(syncInterval);
-  syncFromServer(); // immediate first sync
-  syncInterval = setInterval(syncFromServer, 30000);
-}
-
-// ── OVERRIDE: recordGame to also push to server ──
-const _origRecordGame = recordGame;
-async function recordGame(){
-  if(selP.size !== 4){ toast('Select exactly 4 players','err'); return; }
-  const stock = stockLeft();
-  if(sCount > stock){ toast('Only ' + stock + ' shuttles in stock!','err'); return; }
-  const gameDate = document.getElementById('game-date').value || todayStr();
-  const wk = weekKey(gameDate);
-  if(isWeekLocked(wk)){ toast('This week is locked!','err'); return; }
-  ensureWeek(wk);
-  const scoreOn = document.getElementById('score-toggle').checked;
-  const gameObj = {
-    id:uid(), date:gameDate, weekKey:wk,
-    players:[...selP], shuttles:sCount, ts:Date.now(),
-    score: scoreOn ? {a:scoreA, b:scoreB} : null,
-    winners: scoreOn && winnerSet.size===2 ? [...winnerSet] : []
-  };
-  // Save locally first (instant UI response)
-  db.games.push(gameObj);
-  saveDB();
-  toast('Game recorded — ' + sCount + ' shuttle' + (sCount>1?'s':''));
-  resetEntry(); renderTodayLog(); renderHome();
-  // Push to server in background
-  setSyncStatus('syncing','Saving to central database...');
-  const ok = await pushToServer('addGame', gameObj);
-  if(ok){ setSyncStatus('online','✅ Saved to central database'); lastSyncTime=Date.now(); }
-  else  { setSyncStatus('error','⚠️ Saved locally — will sync when online'); }
-}
-
-// ── OVERRIDE: delGame to also delete from server ──
-async function delGame(id){
-  if(!isAdmin){ toast('Admin only','err'); return; }
-  db.games = db.games.filter(g => g.id !== id);
-  saveDB(); renderTodayLog(); renderHome(); toast('Game removed');
-  setSyncStatus('syncing','Removing from central database...');
-  const ok = await pushToServer('deleteGame', {id});
-  if(ok) setSyncStatus('online','✅ Synced');
-  else   setSyncStatus('error','⚠️ Removed locally — will sync when online');
-}
-
-// ── OVERRIDE: addPlayer to also push ──
-async function addPlayer(){
-  if(!isAdmin){ toast('Admin only','err'); return; }
-  const name = document.getElementById('np-name').value.trim();
-  const initials = document.getElementById('np-init').value.trim().toUpperCase();
-  const phone = document.getElementById('np-phone').value.trim();
-  if(!name||!initials){ toast('Name and initials required','err'); return; }
-  if(db.players.find(p=>p.initials===initials)){ toast('Initials already used','err'); return; }
-  const obVal = parseFloat(document.getElementById('np-ob')?.value)||0;
-  const playerObj = {id:uid(), name, initials, phone, joinDate:todayStr(), openingBalance:obVal};
-  db.players.push(playerObj);
-  saveDB();
-  ['np-name','np-init','np-phone'].forEach(id=>document.getElementById(id).value='');
-  toast(name + ' added'); renderPlayers();
-  secRenderPlayerGrid(); // refresh security grid with new player
-  const ok = await pushToServer('addPlayer', playerObj);
-  if(ok) setSyncStatus('online','✅ Player saved to central database');
-  else   setSyncStatus('error','⚠️ Saved locally — sync when online');
-}
-
-// ── OVERRIDE: addBox to also push ──
-async function addBox(){
-  if(!isAdmin){ toast('Admin only','err'); return; }
-  const pid = document.getElementById('box-player').value;
-  const boxes = parseInt(document.getElementById('box-count').value)||1;
-  const spb = getEffectiveSPB();
-  if(!pid){ toast('Select a player','err'); return; }
-  if(!spb||spb<1){ toast('Enter shuttles per box','err'); return; }
-  const p = getP(pid);
-  const wk = weekKey(todayStr());
-  ensureWeek(wk);
-  const purchaseObj = {id:uid(), date:todayStr(), weekKey:wk, playerId:pid, boxes, spb, ts:Date.now()};
-  db.purchases.push(purchaseObj);
-  saveDB();
-  toast(boxes + ' box' + (boxes>1?'es':'') + ' · ' + boxes*spb + ' shuttles credited to ' + p.name);
-  renderPlayers(); renderStock();
-  sendBoxWA(p, boxes, spb);
-  const ok = await pushToServer('addPurchase', purchaseObj);
-  if(ok) setSyncStatus('online','✅ Purchase saved to central database');
-  else   setSyncStatus('error','⚠️ Saved locally — sync when online');
-}
-
-// ── OVERRIDE: confirmLock to also push ──
-const _origConfirmLock = confirmLock;
-async function confirmLock(){
-  if(!pendingLockWeek) return;
-  const wk = pendingLockWeek;
-  ensureWeek(wk);
-  const widx = db.weeks.findIndex(x => x.weekKey === wk);
-  db.weeks[widx].locked = true;
-  db.weeks[widx].lockedAt = Date.now();
-  db.games.forEach(g => { if(g.weekKey===wk) g.locked=true; });
-  saveDB();
-  closeModal('lockModal');
-  toast('Week locked 🔒');
-  renderReport();
-  setTimeout(() => printWeekReport(wk), 400);
-  const ok = await pushToServer('lockWeek', {
-    weekKey: wk, label: weekLabel(wk), lockedAt: Date.now()
-  });
-  if(ok) setSyncStatus('online','✅ Week locked on central database');
-  else   setSyncStatus('error','⚠️ Locked locally — sync when online');
-}
-
-// ── GAS URL SETUP (Admin only) ──
-function showGASSetup(){
-  if(!isAdmin){ toast('Admin only','err'); return; }
-  const status = syncOnline ? '✅ Connected' : '❌ Not connected';
-  const last = lastSyncTime ? 'Last sync: ' + fmtTime(lastSyncTime) : 'Never synced';
-  const newUrl = prompt(
-    'GOOGLE APPS SCRIPT URL\n\n' +
-    'Status: ' + status + '\n' + last + '\n\n' +
-    'Paste a new GAS URL to update, or leave as-is and tap OK to force-push local data.\n\n' +
-    'Tip: Redeploy GAS → New Deployment → copy the /exec URL',
-    GAS_URL
-  );
-  if(newUrl === null) return; // cancelled
-  if(newUrl && newUrl.startsWith('https://') && newUrl.trim() !== GAS_URL){
-    GAS_URL = newUrl.trim();
-    localStorage.setItem('tc_gas_url', GAS_URL);
-    toast('\u2705 GAS URL updated — syncing...');
-    lastSyncError = 0;
-    syncFromServer();
-  } else {
-    forcePushAll();
-  }
-}
-
 async function forcePushAll(){
   toast('Pushing all data to Google Sheet...');
   await autoInitializeSheet();
