@@ -1600,11 +1600,14 @@ setTimeout(()=>{ loadDB(); seedPlayers(); mergeMasterPlayers(); secInit(); docum
 
 // ── PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE ──
 // After deploying your Apps Script, replace the URL below
-let GAS_URL = 'https://script.google.com/macros/s/AKfycbzT0KxdSHb_7Wih1bMy37d0-iHCvjkPrzCgndPGBoNwFScrZpS71jMKAcRynuKB2k6T/exec'; localStorage.setItem('tc_gas_url', GAS_URL);
+// Load GAS URL from localStorage (allows runtime update via DB button) or use hardcoded default
+const _DEFAULT_GAS = 'https://script.google.com/macros/s/AKfycbwodtFDaRNkuiAyCDMc3DvPdrbBHx1D6IhvA0NBYSWSvniIhaqO7-XbVawpHnjYut0vgQ/exec';
+let GAS_URL = localStorage.getItem('tc_gas_url') || _DEFAULT_GAS;
 
 let syncOnline = false;
 let lastSyncTime = null;
 let syncInterval = null;
+let lastSyncError = 0; // cooldown to suppress repeated console spam
 
 // ── Sync status display ──
 function setSyncStatus(state, msg){
@@ -1689,7 +1692,12 @@ async function syncFromServer(){
   } catch(err) {
     syncOnline = false;
     setSyncStatus('error', '❌ Sync failed — using local data');
-    console.error('Sync error:', err);
+    // Only log once every 5 minutes to avoid console spam
+    const now = Date.now();
+    if(now - lastSyncError > 300000){
+      console.warn('Sync error (suppressing repeats for 5 min):', err.message);
+      lastSyncError = now;
+    }
     return false;
   }
 }
@@ -1891,13 +1899,24 @@ async function confirmLock(){
 function showGASSetup(){
   if(!isAdmin){ toast('Admin only','err'); return; }
   const status = syncOnline ? '✅ Connected' : '❌ Not connected';
-  const last = lastSyncTime ? 'Last sync: ' + fmtTime(lastSyncTime) : 'Not yet synced';
-  const choice = confirm(
-    'Database: ' + status + '\n' + last +
-    '\n\nTap OK to FORCE PUSH all local data to Google Sheet now.' +
-    '\n(This uploads all players and games to the central database)'
+  const last = lastSyncTime ? 'Last sync: ' + fmtTime(lastSyncTime) : 'Never synced';
+  const newUrl = prompt(
+    'GOOGLE APPS SCRIPT URL\n\n' +
+    'Status: ' + status + '\n' + last + '\n\n' +
+    'Paste a new GAS URL to update, or leave as-is and tap OK to force-push local data.\n\n' +
+    'Tip: Redeploy GAS → New Deployment → copy the /exec URL',
+    GAS_URL
   );
-  if(choice) forcePushAll();
+  if(newUrl === null) return; // cancelled
+  if(newUrl && newUrl.startsWith('https://') && newUrl.trim() !== GAS_URL){
+    GAS_URL = newUrl.trim();
+    localStorage.setItem('tc_gas_url', GAS_URL);
+    toast('\u2705 GAS URL updated — syncing...');
+    lastSyncError = 0;
+    syncFromServer();
+  } else {
+    forcePushAll();
+  }
 }
 
 async function forcePushAll(){
