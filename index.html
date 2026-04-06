@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -9,6 +12,29 @@
 <meta name="theme-color" content="#0a0f1a">
 <title>Towers Club Badminton v3.6</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script>
+// ── FORCE CACHE CLEAR v3.6 ──
+// Unregister any old service workers
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(r=>r.unregister());
+  });
+}
+// Force reload if cached version detected
+(function(){
+  const storedVer = localStorage.getItem('tc_loaded_ver');
+  const currentVer = 'v3.6';
+  if(storedVer && storedVer !== currentVer){
+    localStorage.setItem('tc_loaded_ver', currentVer);
+    // Add timestamp to URL to bust cache
+    if(!window.location.search.includes('bust=')){
+      window.location.replace(window.location.pathname + '?bust=' + Date.now());
+    }
+  } else {
+    localStorage.setItem('tc_loaded_ver', currentVer);
+  }
+})();
+</script>
 <style>
 :root{
   --bg:#0a0f1a;--surface:#111827;--card:#1a2332;--border:#1e3048;
@@ -1957,4 +1983,3 @@ setInterval(checkUpdate, 8 * 60 * 1000);
 </script>
 </body>
 </html>
-
