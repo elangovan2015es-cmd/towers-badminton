@@ -984,11 +984,11 @@ const DB_KEY='towersbc_v39';
 // Player list loaded from Google Sheet — not stored in code
 const MASTER_PLAYERS = []; // populated from server on sync
 
-// Admin PINs loaded from Google Sheet — not stored in code
-// Format in GAS Settings sheet: key=admin_saravana_pin, value=XXXX
+// Admin accounts with fallback PINs
+// These work immediately — overridden by Google Sheet values when available
 let ADMIN_ACCOUNTS = [
-  {id:'__saravana_admin__', name:'Saravana Admin', initials:'SA', pin:''},
-  {id:'__sanjay_admin__',   name:'Sanjay Admin',   initials:'SJ', pin:''},
+  {id:'__saravana_admin__', name:'Saravana Admin', initials:'SA', pin:'2255'},
+  {id:'__sanjay_admin__',   name:'Sanjay Admin',   initials:'SJ', pin:'3255'},
 ];
 
 function mergeMasterPlayers(){
@@ -1416,7 +1416,7 @@ function toast(msg,type=''){const t=document.getElementById('toast');t.textConte
 // Uses a device fingerprint (localStorage unique ID) bound to the PIN
 // ════════════════════════════════════════════════════════
 
-const SEC_ADMIN_PIN = ''; // loaded from server
+const SEC_ADMIN_PIN = '2255'; // fallback — overridden by server
 const SEC_KEY_PREFIX = 'tc_sec_';  // localStorage key prefix
 
 let secSelectedPlayer = null;  // player object selected on step 1
