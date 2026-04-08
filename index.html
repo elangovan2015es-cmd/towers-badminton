@@ -736,13 +736,13 @@ input:checked+.slider:before{transform:translateX(20px);}
 <script>
 const APP_VERSION="v3.10";
 const ADMIN_PIN='1255';
-const DB_KEY='towersbc_v310';
+const DB_KEY='towersbc_v22';
 
 // Player list loaded from Google Sheet — not stored in code
 const MASTER_PLAYERS = []; // populated from server on sync
 
 // Admin PINs loaded from Google Sheet — not stored in code
-// PINs work immediately — also updated from Google Sheet when available
+// Format in GAS Settings sheet: key=admin_saravana_pin, value=XXXX
 let ADMIN_ACCOUNTS = [
   {id:'__saravana_admin__', name:'Saravana Admin', initials:'SA', pin:'2255'},
   {id:'__sanjay_admin__',   name:'Sanjay Admin',   initials:'SJ', pin:'3255'},
@@ -1502,18 +1502,17 @@ async function syncFromServer(){
     // Merge server data into local db
     if(data.players && data.players.length){
       const seen = {};
-      db.players = data.players
+      const cleaned = data.players
         .filter(p => p.id && p.name && p.name.trim() && p.initials && p.initials.trim())
         .map(p => ({
-          id: p.id,
-          name: p.name.trim(),
+          id: p.id, name: p.name.trim(),
           initials: p.initials.trim().toUpperCase(),
           phone: p.phone||'',
-          joinDate: (p.joinDate && p.joinDate.length>=8 && !p.joinDate.includes('Invalid')) ? p.joinDate : '2026-04-04',
+          joinDate: (p.joinDate&&p.joinDate.length>=8&&!p.joinDate.includes('Invalid'))?p.joinDate:'2026-04-04',
           openingBalance: parseFloat(p.openingBalance)||0
         }))
-        .filter(p => { if(seen[p.initials]) return false; seen[p.initials]=true; return true; });
-      saveDB();
+        .filter(p=>{ if(seen[p.initials])return false; seen[p.initials]=true; return true; });
+      if(cleaned.length > 0){ db.players = cleaned; saveDB(); }
     }
     if(data.games && data.games.length){
       db.games = data.games.map(g => ({
