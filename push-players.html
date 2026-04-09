@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Towers BC — Push Players</title>
+<style>
+body{font-family:sans-serif;background:#0a0f1a;color:#e2eaf5;padding:20px;max-width:500px;margin:0 auto;}
+h2{color:#16c784;}p{color:#5a7a99;font-size:13px;margin-bottom:16px;}
+button{width:100%;padding:14px;background:#16c784;color:#030a05;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:16px;}
+button:disabled{background:#1e3048;color:#5a7a99;}
+#status{font-size:14px;font-weight:600;margin-bottom:12px;}
+#log{background:#111827;border-radius:10px;padding:14px;font-family:monospace;font-size:12px;min-height:100px;max-height:400px;overflow-y:auto;}
+.ok{color:#16c784;}.err{color:#ef4444;}.info{color:#f0b429;}
+</style>
+</head>
+<body>
+<h2>Towers BC — Push 14 Players</h2>
+<p>Open in Chrome on PC. Click button to push all players to Google Sheet.</p>
+<button id="btn" onclick="pushAll()">Push All 14 Players to Sheet</button>
+<div id="status"></div>
+<div id="log"></div>
+<script>
+const GAS='https://script.google.com/macros/s/AKfycbyEyQwbhhSzfdC3m6e3T8ZDOQhr0gwnwO6wDOmLE5viwcKIrQBWZtbh1xb5jOA_gX_cQg/exec';
+const players=[
+  {id:'p_SR',name:'Mr. Sankar',   initials:'SR',phone:'',joinDate:'2026-04-04',openingBalance:6},
+  {id:'p_EO',name:'Mr. Elango',   initials:'EO',phone:'',joinDate:'2026-04-04',openingBalance:-6.25},
+  {id:'p_KN',name:'Mr. Kannan',   initials:'KN',phone:'',joinDate:'2026-04-04',openingBalance:1.75},
+  {id:'p_VH',name:'Mr. V.Hinduja',initials:'VH',phone:'',joinDate:'2026-04-04',openingBalance:19.5},
+  {id:'p_PH',name:'Mr. Pugazh',   initials:'PH',phone:'',joinDate:'2026-04-04',openingBalance:13},
+  {id:'p_RN',name:'Mr. Rajan',    initials:'RN',phone:'',joinDate:'2026-04-04',openingBalance:10},
+  {id:'p_SH',name:'Mr. Satish',   initials:'SH',phone:'',joinDate:'2026-04-04',openingBalance:-1},
+  {id:'p_LA',name:'Mr. Lanka',    initials:'LA',phone:'',joinDate:'2026-04-04',openingBalance:29.75},
+  {id:'p_SD',name:'Mr. Shahid',   initials:'SD',phone:'',joinDate:'2026-04-04',openingBalance:0},
+  {id:'p_VT',name:'Mr. Venkat',   initials:'VT',phone:'',joinDate:'2026-04-04',openingBalance:10.75},
+  {id:'p_SV',name:'Mr. Sarvesh',  initials:'SV',phone:'',joinDate:'2026-04-04',openingBalance:9},
+  {id:'p_HR',name:'Mr. Hiren',    initials:'HR',phone:'',joinDate:'2026-04-04',openingBalance:6.25},
+  {id:'p_SM',name:'Mr. Shyam',    initials:'SM',phone:'',joinDate:'2026-04-04',openingBalance:0},
+  {id:'p_HI',name:'Mr. Hari',     initials:'HI',phone:'',joinDate:'2026-04-04',openingBalance:0},
+];
+const log=document.getElementById('log'),status=document.getElementById('status'),btn=document.getElementById('btn');
+function addLog(msg,cls){const d=document.createElement('div');d.className=cls||'';d.textContent=msg;log.appendChild(d);log.scrollTop=log.scrollHeight;}
+async function fetchGAS(action,data){
+  const p=new URLSearchParams({action,data:JSON.stringify(data),_:Date.now()});
+  const r=await fetch(GAS+'?'+p.toString(),{method:'GET',cache:'no-store',redirect:'follow'});
+  return await r.json();
+}
+async function pushAll(){
+  btn.disabled=true;btn.textContent='Pushing...';log.innerHTML='';status.textContent='';
+  try{addLog('Initializing...','info');const i=await fetchGAS('initialSetup',{});addLog('Ready: '+JSON.stringify(i),'ok');}
+  catch(e){addLog('Init error: '+e.message,'err');}
+  let ok=0,fail=0;
+  for(const p of players){
+    try{
+      const r=await fetchGAS('addPlayer',p);
+      if(r.ok||r.success){addLog('OK  '+p.initials+' '+p.name+(r.duplicate?' (exists)':''),'ok');ok++;}
+      else{addLog('FAIL '+p.initials+' '+JSON.stringify(r),'err');fail++;}
+    }catch(e){addLog('ERR '+p.initials+' '+e.message,'err');fail++;}
+  }
+  if(ok===14){status.textContent='All 14 players pushed!';status.style.color='#16c784';btn.textContent='Done!';}
+  else{status.textContent=ok+' pushed, '+fail+' failed.';status.style.color='#ef4444';btn.textContent='Retry';btn.disabled=false;}
+}
+</script>
+</body>
+</html>
