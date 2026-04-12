@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Towers BC — Push All Historical Games</title>
+<style>
+body{font-family:sans-serif;background:#0a0f1a;color:#e2eaf5;padding:20px;max-width:560px;margin:0 auto;}
+h2{color:#16c784;margin-bottom:4px;}
+p{color:#5a7a99;font-size:13px;margin-bottom:16px;}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px;}
+th{background:#0a2a5a;color:#fff;padding:6px;text-align:left;}
+td{padding:5px 6px;border-bottom:1px solid #1e3048;}
+button{width:100%;padding:14px;background:#16c784;color:#030a05;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;}
+button:disabled{background:#1e3048;color:#5a7a99;}
+#status{font-size:14px;font-weight:600;margin-bottom:10px;}
+#log{background:#111827;border-radius:10px;padding:12px;font-family:monospace;font-size:11px;min-height:80px;max-height:350px;overflow-y:auto;}
+.ok{color:#16c784;}.err{color:#ef4444;}.info{color:#f0b429;}
+</style>
+</head>
+<body>
+<h2>Towers BC — Push Historical Games</h2>
+<p>Open in Chrome on PC. Pushes all 41 games from 01-Apr to 10-Apr-2026.</p>
+<button id="btn" onclick="pushAll()">Push All 41 Games + Players to Sheet</button>
+<div id="status"></div>
+<div id="log"></div>
+<script>
+const GAS='https://script.google.com/macros/s/AKfycbyEyQwbhhSzfdC3m6e3T8ZDOQhr0gwnwO6wDOmLE5viwcKIrQBWZtbh1xb5jOA_gX_cQg/exec';
+
+// Player registry — initials to ID mapping
+const PLAYERS = [
+  {id:'p_SR',initials:'SR',name:'Mr. Sankar',   phone:'919840131963',joinDate:'2026-04-01',openingBalance:6},
+  {id:'p_EO',initials:'EO',name:'Mr. Elango',   phone:'919789855222',joinDate:'2026-04-01',openingBalance:-6.25},
+  {id:'p_KN',initials:'KN',name:'Mr. Kannan',   phone:'919444933333',joinDate:'2026-04-01',openingBalance:1.75},
+  {id:'p_VH',initials:'VH',name:'Mr. V.Hinduja',phone:'919884077751',joinDate:'2026-04-01',openingBalance:19.5},
+  {id:'p_PH',initials:'PH',name:'Mr. Pugazh',   phone:'919841017395',joinDate:'2026-04-01',openingBalance:13},
+  {id:'p_RN',initials:'RN',name:'Mr. Rajan',    phone:'919500038390',joinDate:'2026-04-01',openingBalance:10},
+  {id:'p_SH',initials:'SH',name:'Mr. Satish',   phone:'919444033990',joinDate:'2026-04-01',openingBalance:-1},
+  {id:'p_LA',initials:'LA',name:'Mr. Lanka',    phone:'919841010110',joinDate:'2026-04-01',openingBalance:29.75},
+  {id:'p_SD',initials:'SD',name:'Mr. Shahid',   phone:'919884000243',joinDate:'2026-04-01',openingBalance:0},
+  {id:'p_VT',initials:'VT',name:'Mr. Venkat',   phone:'919176764777',joinDate:'2026-04-01',openingBalance:10.75},
+  {id:'p_SV',initials:'SV',name:'Mr. Sarvesh',  phone:'919841017395',joinDate:'2026-04-01',openingBalance:9},
+  {id:'p_HR',initials:'HR',name:'Mr. Hiren',    phone:'',            joinDate:'2026-04-01',openingBalance:6.25},
+  {id:'p_SM',initials:'SM',name:'Mr. Shyam',    phone:'919884148787',joinDate:'2026-04-01',openingBalance:0},
+  {id:'p_HI',initials:'HI',name:'Mr. Hari',     phone:'919791577779',joinDate:'2026-04-01',openingBalance:0},
+  {id:'p_SP',initials:'SP',name:'Mr. Swaroop',  phone:'',            joinDate:'2026-04-02',openingBalance:0},
+  {id:'p_PR',initials:'PR',name:'Mr. Pradeep',  phone:'',            joinDate:'2026-04-05',openingBalance:0},
+  {id:'p_SK',initials:'SK',name:'Mr. Shashank', phone:'',            joinDate:'2026-04-05',openingBalance:0},
+  {id:'p_KL',initials:'KL',name:'Mr. Kamal',    phone:'',            joinDate:'2026-04-06',openingBalance:0},
+  {id:'p_BL',initials:'BL',name:'Mr. Bala',     phone:'',            joinDate:'2026-04-07',openingBalance:0},
+];
+
+const PID = {}; PLAYERS.forEach(p => PID[p.initials] = p.id);
+
+function wk(dateStr){
+  const d=new Date(dateStr);
+  const jan1=new Date(d.getFullYear(),0,1);
+  const week=Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+  return d.getFullYear()+'-W'+String(week).padStart(2,'0');
+}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+
+// All 41 games
+const GAMES = [
+  // 01-Apr-2026
+  {date:'2026-04-01', players:['EO','VH','PH','RN']},
+  {date:'2026-04-01', players:['EO','VH','PH','RN']},
+  {date:'2026-04-01', players:['EO','VH','RN','LA']},
+  {date:'2026-04-01', players:['EO','VH','LA','PH']},
+  {date:'2026-04-01', players:['VH','LA','VT','PH']},
+  // 02-Apr-2026
+  {date:'2026-04-02', players:['SR','EO','VH','SP']},
+  {date:'2026-04-02', players:['SR','EO','PH','LA']},
+  {date:'2026-04-02', players:['EO','VH','PH','LA']},
+  {date:'2026-04-02', players:['EO','VH','PH','LA']},
+  {date:'2026-04-02', players:['VH','PH','LA','SM']},
+  // 03-Apr-2026
+  {date:'2026-04-03', players:['EO','SH','VT','SP']},
+  {date:'2026-04-03', players:['SM','KN','HR','SH']},
+  // 04-Apr-2026
+  {date:'2026-04-04', players:['SR','EO','RN','SH']},
+  {date:'2026-04-04', players:['EO','VH','RN','SH']},
+  {date:'2026-04-04', players:['EO','VH','PH','SH']},
+  {date:'2026-04-04', players:['VH','PH','RN','SH']},
+  // 05-Apr-2026
+  {date:'2026-04-05', players:['PH','LA','PR','VT']},
+  {date:'2026-04-05', players:['PH','LA','PR','SP']},
+  {date:'2026-04-05', players:['PH','LA','PR','SK']},
+  // 06-Apr-2026
+  {date:'2026-04-06', players:['SR','EO','KN','SH']},
+  {date:'2026-04-06', players:['EO','PH','RN','SH']},
+  {date:'2026-04-06', players:['KN','RN','SH','LA']},
+  {date:'2026-04-06', players:['PH','LA','VT','SK']},
+  {date:'2026-04-06', players:['KL','PH','SH','LA']},
+  {date:'2026-04-06', players:['KL','PH','LA','SK']},
+  // 07-Apr-2026
+  {date:'2026-04-07', players:['SR','EO','PH','SH']},
+  {date:'2026-04-07', players:['EO','KN','PH','SH']},
+  {date:'2026-04-07', players:['EO','KN','SH','LA']},
+  {date:'2026-04-07', players:['SH','LA','VT','SM']},
+  {date:'2026-04-07', players:['KL','LA','SK','BL']},
+  // 08-Apr-2026 — No play
+  // 09-Apr-2026
+  {date:'2026-04-09', players:['EO','RN','LA','SP']},
+  {date:'2026-04-09', players:['KL','KN','VH','LA']},
+  {date:'2026-04-09', players:['EO','RN','SP','HR']},
+  {date:'2026-04-09', players:['EO','RN','LA','SM']},
+  {date:'2026-04-09', players:['KN','VH','LA','HR']},
+  {date:'2026-04-09', players:['KN','VH','SM','HR']},
+  {date:'2026-04-09', players:['KN','HI','LA','SM']},
+  // 10-Apr-2026
+  {date:'2026-04-10', players:['SR','VH','PH','SH']},
+  {date:'2026-04-10', players:['EO','KN','RN','SH']},
+  {date:'2026-04-10', players:['EO','VH','RN','SH']},
+  {date:'2026-04-10', players:['KN','PH','RN','SH']},
+];
+
+const log=document.getElementById('log');
+const status=document.getElementById('status');
+const btn=document.getElementById('btn');
+function addLog(msg,cls){const d=document.createElement('div');d.className=cls||'';d.textContent=msg;log.appendChild(d);log.scrollTop=log.scrollHeight;}
+
+async function fetchGAS(action,data){
+  const p=new URLSearchParams({action,data:JSON.stringify(data),_:Date.now()});
+  const r=await fetch(GAS+'?'+p.toString(),{method:'GET',cache:'no-store',redirect:'follow'});
+  return await r.json();
+}
+
+async function pushAll(){
+  btn.disabled=true;btn.textContent='Pushing...';log.innerHTML='';status.textContent='';
+
+  // Step 1: Init sheets
+  addLog('Initializing sheets...','info');
+  try{const r=await fetchGAS('initialSetup',{});addLog('Sheets ready: '+JSON.stringify(r),'ok');}
+  catch(e){addLog('Init error: '+e.message,'err');}
+
+  // Step 2: Push all players
+  addLog('--- Pushing players ---','info');
+  let pOk=0;
+  for(const p of PLAYERS){
+    try{
+      const r=await fetchGAS('addPlayer',p);
+      addLog((r.duplicate?'EXISTS':'OK')+'  '+p.initials+' '+p.name, r.ok||r.success?'ok':'err');
+      if(r.ok||r.success) pOk++;
+    }catch(e){addLog('ERR '+p.initials+': '+e.message,'err');}
+  }
+
+  // Step 3: Push all games
+  addLog('--- Pushing '+GAMES.length+' games ---','info');
+  let gOk=0, gFail=0;
+  let prevDate='';
+  for(let i=0;i<GAMES.length;i++){
+    const g=GAMES[i];
+    if(g.date!==prevDate){addLog('📅 '+g.date,'info');prevDate=g.date;}
+    const playerIds=g.players.map(ini=>PID[ini]).filter(Boolean);
+    if(playerIds.length!==4){addLog('ERR Game '+(i+1)+': wrong players '+g.players.join(','),'err');gFail++;continue;}
+    const payload={
+      id:uid(), date:g.date, weekKey:wk(g.date),
+      players:playerIds, shuttles:g.shuttles||1,
+      ts:new Date(g.date).getTime()+(i*60000),
+      winners:[], locked:false
+    };
+    try{
+      const r=await fetchGAS('addGame',payload);
+      if(r.ok||r.success){addLog('OK  G'+(i+1)+': '+g.players.join(',')+' '+(r.duplicate?'(exists)':''),'ok');gOk++;}
+      else{addLog('FAIL G'+(i+1)+': '+JSON.stringify(r),'err');gFail++;}
+    }catch(e){addLog('ERR G'+(i+1)+': '+e.message,'err');gFail++;}
+  }
+
+  if(gFail===0){
+    status.textContent=`✅ Done! ${pOk} players + ${gOk} games pushed!`;
+    status.style.color='#16c784';
+    btn.textContent='Done! ✓';
+  } else {
+    status.textContent=`${gOk} games OK, ${gFail} failed. Retry?`;
+    status.style.color='#ef4444';
+    btn.textContent='Retry';
+    btn.disabled=false;
+  }
+}
+</script>
+</body>
+</html>
