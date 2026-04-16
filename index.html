@@ -3778,43 +3778,24 @@ async function manualSync(){
 }
 
 
-// ══ UPDATE SYSTEM v3.0 — checks raw GitHub file, no CDN cache issues ══
+// ══ UPDATE SYSTEM v4.1 ══
 const _VER = 'v3.51';
 const _URL = 'https://elangovan2015es-cmd.github.io/towers-badminton/';
-// Raw GitHub URL bypasses CDN cache — always serves the actual committed file
-const _RAW = 'https://raw.githubusercontent.com/elangovan2015es-cmd/towers-badminton/main/index.html';
 
-// Hard refresh — clears everything and reloads
 function hardRefresh(){
-  try{
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.getRegistrations().then(regs=>{ regs.forEach(r=>r.unregister()); });
-    }
-  }catch(e){}
-  try{
-    if('caches' in window){ caches.keys().then(keys=>{ keys.forEach(k=>caches.delete(k)); }); }
-  }catch(e){}
+  try{ if('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(r=>r.unregister())); }catch(e){}
+  try{ if('caches' in window) caches.keys().then(keys=>keys.forEach(k=>caches.delete(k))); }catch(e){}
   setTimeout(()=>{ window.location.href = _URL + '?nocache=' + Date.now(); }, 300);
 }
 
-// Check raw GitHub for newer version — bypasses CDN entirely
 function checkUpdate(){
-  fetch(_RAW + '?_=' + Date.now(), { cache:'no-store' })
-  .then(r => r.text())
-  .then(html => {
+  fetch(_URL + '?_=' + Date.now(), { cache:'no-store' })
+  .then(r=>{ if(!r.ok) throw new Error(r.status); return r.text(); })
+  .then(html=>{
     const m = html.match(/const _VER = '(v[\d.]+)'/);
     if(m && m[1] && m[1] !== _VER) showBanner(m[1]);
   })
-  .catch(()=>{
-    // Fallback: try GitHub Pages URL directly
-    fetch(_URL + '?_=' + Date.now(), { cache:'no-store' })
-    .then(r => r.text())
-    .then(html => {
-      const m = html.match(/const _VER = '(v[\d.]+)'/);
-      if(m && m[1] && m[1] !== _VER) showBanner(m[1]);
-    })
-    .catch(()=>{});
-  });
+  .catch(()=>{});
 }
 
 function showBanner(newVer){
@@ -3823,12 +3804,11 @@ function showBanner(newVer){
   d.id = 'upd-banner';
   d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#f0b429;color:#030a05;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;font-family:Outfit,sans-serif;font-size:13px;font-weight:600;box-shadow:0 3px 16px rgba(0,0,0,.4)';
   d.innerHTML = '<div><div style="font-size:14px;font-weight:700">🆕 New Update: '+newVer+'</div>'
-    + '<div style="font-size:11px;font-weight:400;opacity:.75;margin-top:1px">Tap UPDATE to install</div></div>'
-    + '<button onclick="hardRefresh()" style="background:#030a05;color:#f0b429;border:none;border-radius:8px;padding:9px 16px;font-family:Outfit,sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">UPDATE</button>';
+    +'<div style="font-size:11px;font-weight:400;opacity:.75;margin-top:1px">Tap UPDATE to install</div></div>'
+    +'<button onclick="hardRefresh()" style="background:#030a05;color:#f0b429;border:none;border-radius:8px;padding:9px 16px;font-family:Outfit,sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">UPDATE</button>';
   document.body.prepend(d);
 }
 
-// Add manual 🔄 refresh button in header
 function addRefreshBtn(){
   const hdr = document.querySelector('.hdr-right');
   if(!hdr || document.getElementById('hdr-refresh-btn')) return;
@@ -3840,10 +3820,9 @@ function addRefreshBtn(){
   hdr.prepend(btn);
 }
 
-// Run immediately on load — no delay
-checkUpdate();
-setTimeout(addRefreshBtn, 1000);
-setInterval(checkUpdate, 5 * 60 * 1000); // check every 5 min
+// Run on load + every 5 min
+setTimeout(()=>{ checkUpdate(); addRefreshBtn(); }, 1500);
+setInterval(checkUpdate, 5 * 60 * 1000);
 </script>
   <!-- Watermark -->
   <div id="wm-footer" style="text-align:center;font-size:9px;color:#1e3048;padding:6px;letter-spacing:.5px;position:fixed;bottom:0;left:0;right:0;pointer-events:none;z-index:1">
