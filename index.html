@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TowersBC">
 <meta name="theme-color" content="#dc2626">
-<title>Towers Club Badminton v3.49</title>
+<title>Towers Club Badminton v3.50</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -952,6 +952,47 @@ input:checked+.slider:before{transform:translateX(20px);}
       </div>
     </div>
     <div id="daily-report-content"></div>
+    <!-- GAME CORRECTION — Admin only -->
+    <div class="card" id="game-correction-card" style="display:none;border-color:rgba(239,68,68,.3);margin-top:4px">
+      <div class="ct" style="color:var(--red)">🛠️ GAME CORRECTION <span style="font-size:9px;color:var(--muted)">(ADMIN ONLY)</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Select a date and game to recall and correct any entry error.</div>
+      <div class="ig mb8"><span class="il">Date</span><input type="date" id="gc-date" onchange="loadGCGames()" style="font-size:13px"></div>
+      <div class="ig mb8"><span class="il">Select Game to Correct</span><select id="gc-game-sel" onchange="loadGCGame()"><option value="">-- Select game --</option></select></div>
+      <div id="gc-edit-section" style="display:none">
+        <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--muted)">
+          ⚠️ Correcting game: <span id="gc-game-label" style="color:var(--text);font-weight:600"></span>
+        </div>
+        <div class="ig mb8">
+          <span class="il">Players (select exactly 4)</span>
+          <div id="gc-player-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+          <div id="gc-player-hint" style="font-size:10px;color:var(--muted);margin-top:5px">0 of 4 selected</div>
+        </div>
+        <div class="ig mb8">
+          <span class="il">Shuttles Used</span>
+          <div style="display:flex;gap:6px">
+            <button onclick="gcSetShuttle(0)" id="gcs-btn-0" style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--border);background:var(--surface);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:22px;cursor:pointer;transition:all .15s">0</button>
+            <button onclick="gcSetShuttle(1)" id="gcs-btn-1" style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--accent);background:rgba(22,199,132,.2);color:var(--accent);font-family:'Bebas Neue',sans-serif;font-size:22px;cursor:pointer;transition:all .15s">1</button>
+            <button onclick="gcSetShuttle(2)" id="gcs-btn-2" style="flex:1;padding:10px;border-radius:9px;border:2px solid var(--border);background:var(--surface);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:22px;cursor:pointer;transition:all .15s">2</button>
+          </div>
+        </div>
+        <div class="ig mb8">
+          <span class="il">Score (optional)</span>
+          <div class="row" style="gap:8px">
+            <input type="number" id="gc-score-a" min="0" max="30" placeholder="Team A score" style="font-size:14px">
+            <input type="number" id="gc-score-b" min="0" max="30" placeholder="Team B score" style="font-size:14px">
+          </div>
+        </div>
+        <div class="ig mb8">
+          <span class="il">Winners (tap to toggle · max 2)</span>
+          <div id="gc-winner-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
+        </div>
+        <div class="row" style="gap:8px;margin-top:6px">
+          <button class="btn btn-ghost f1" onclick="cancelGCEdit()">Cancel</button>
+          <button class="btn f1" style="background:var(--red);color:#fff" onclick="confirmGCEdit()">✅ Save Correction</button>
+        </div>
+      </div>
+      <div id="gc-status" style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px"></div>
+    </div>
   </div>
   <!-- BY PLAYER -->
   <div id="r-player" style="display:none">
@@ -1051,7 +1092,7 @@ input:checked+.slider:before{transform:translateX(20px);}
 <div class="toast" id="toast"></div>
 
 <script>
-const APP_VERSION="v3.49";
+const APP_VERSION="v3.50";
 
 // ── DOMAIN LOCK ──
 (function(){
@@ -1455,6 +1496,7 @@ async function saveDailyGrid(){
   if(!isAdmin){toast('Admin only','err');return;}
   const date = document.getElementById('grid-date').value || todayStr();
   let saved = 0, skipped = 0;
+  const savedGames = []; // track each game object for GAS push
   for(let g=1;g<=MAX_GAMES;g++){
     const players = Object.entries(gridData[g]||{}).filter(([,v])=>v).map(([k])=>k);
     if(players.length === 0) continue;
@@ -1482,6 +1524,7 @@ async function saveDailyGrid(){
       game.score = ps.score;
     }
     db.games.push(game);
+    savedGames.push(game);
     saved++;
   }
   if(saved === 0){toast('No complete games to save','err');return;}
@@ -1490,6 +1533,15 @@ async function saveDailyGrid(){
   toast(`✅ ${saved} game(s) saved for ${fmtDate(date)}`);
   renderTodayLog();
   renderHome();
+  // Push all newly saved games to Google Sheet — tracked by savedIds built above
+  setSyncStatus('syncing', '🔄 Syncing games to central database...');
+  let pushOk = true;
+  for(const g of savedGames){
+    const ok = await pushToServer('addGame', g);
+    if(!ok) pushOk = false;
+  }
+  if(pushOk){ setSyncStatus('online','✅ All games synced to central database'); lastSyncTime=Date.now(); }
+  else       { setSyncStatus('offline','📱 Saved locally — sync when online'); }
   resetGrid();
 }
 
@@ -1866,6 +1918,186 @@ function delGameFromReport(id){
   pushToServer('deleteGame',{id}).then(ok=>{
     setSyncStatus(ok?'online':'offline', ok?'✅ Synced':'📱 Deleted locally');
   });
+}
+
+// ══════════════════════════════════════════
+// GAME CORRECTION — Admin tool to fix any saved game
+// ══════════════════════════════════════════
+let _gcGameId = null;
+let _gcSelPlayers = new Set();
+let _gcSelWinners = new Set();
+let _gcShuttles = 1;
+
+async function loadGCGames(){
+  if(!isAdmin){toast('Admin only','err');return;}
+  const date = document.getElementById('gc-date').value;
+  const sel = document.getElementById('gc-game-sel');
+  const status = document.getElementById('gc-status');
+  sel.innerHTML = '<option value="">Loading...</option>';
+  document.getElementById('gc-edit-section').style.display = 'none';
+  if(!date){ sel.innerHTML='<option value="">-- Select date first --</option>'; return; }
+
+  // Always sync from server first to get latest data
+  status.textContent = '🔄 Fetching latest data from server...';
+  await syncFromServer();
+  status.textContent = '';
+
+  const games = db.games.filter(g => g.date === date);
+  sel.innerHTML = '<option value="">-- Select game --</option>';
+  if(!games.length){
+    sel.innerHTML = '<option value="">No games found on ' + fmtDate(date) + '</option>';
+    status.textContent = '⚠️ No games recorded for ' + fmtDate(date);
+    return;
+  }
+  games.forEach((g, i) => {
+    const names = g.players.map(pid => { const p = getP(pid); return p ? p.initials : '?'; }).join('·');
+    const hasW = g.winners && g.winners.length ? ' 🏆' : '';
+    const opt = document.createElement('option');
+    opt.value = g.id;
+    opt.textContent = 'G' + (i+1) + ': ' + names + ' · ' + g.shuttles + '🏸' + hasW;
+    sel.appendChild(opt);
+  });
+  status.textContent = '✅ ' + games.length + ' game(s) found — select one to correct';
+}
+
+function loadGCGame(){
+  const id = document.getElementById('gc-game-sel').value;
+  const section = document.getElementById('gc-edit-section');
+  const status = document.getElementById('gc-status');
+  if(!id){ section.style.display = 'none'; status.textContent = ''; return; }
+  const g = db.games.find(x => x.id === id);
+  if(!g){ section.style.display = 'none'; toast('Game not found','err'); return; }
+  _gcGameId = id;
+  _gcSelPlayers = new Set(g.players);
+  _gcSelWinners = new Set(g.winners || []);
+  _gcShuttles = typeof g.shuttles === 'number' ? g.shuttles : 1;
+  // Label
+  const names = g.players.map(pid => { const p = getP(pid); return p ? p.name.replace('Mr.','').trim() : '?'; }).join(', ');
+  const date_games = db.games.filter(x => x.date === g.date);
+  const gameNum = date_games.findIndex(x => x.id === id) + 1;
+  document.getElementById('gc-game-label').textContent = 'G' + gameNum + ' · ' + fmtDate(g.date) + ' · ' + names;
+  // Score
+  document.getElementById('gc-score-a').value = g.score ? g.score.a : '';
+  document.getElementById('gc-score-b').value = g.score ? g.score.b : '';
+  // Render player chips (all players)
+  renderGCPlayerChips();
+  // Render winner chips (from selected players)
+  renderGCWinnerChips();
+  // Shuttle buttons
+  gcSetShuttle(_gcShuttles);
+  section.style.display = 'block';
+  status.textContent = 'Loaded. Make corrections below then tap Save Correction.';
+}
+
+function renderGCPlayerChips(){
+  const wrap = document.getElementById('gc-player-chips');
+  if(!wrap) return;
+  wrap.innerHTML = db.players.map(p => {
+    const sel = _gcSelPlayers.has(p.id);
+    return '<div onclick="gcTogglePlayer(\'' + p.id + '\')" style="padding:6px 13px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;'
+      + 'border:2px solid ' + (sel?'var(--accent)':'var(--border)') + ';'
+      + 'background:' + (sel?'rgba(22,199,132,.15)':'var(--surface)') + ';'
+      + 'color:' + (sel?'var(--accent)':'var(--muted)') + ';transition:all .15s">'
+      + p.initials + '</div>';
+  }).join('');
+  const hint = document.getElementById('gc-player-hint');
+  if(hint) hint.textContent = _gcSelPlayers.size + ' of 4 selected';
+}
+
+function gcTogglePlayer(pid){
+  if(_gcSelPlayers.has(pid)){
+    _gcSelPlayers.delete(pid);
+    _gcSelWinners.delete(pid);
+  } else {
+    if(_gcSelPlayers.size >= 4){ toast('Max 4 players','err'); return; }
+    _gcSelPlayers.add(pid);
+  }
+  renderGCPlayerChips();
+  renderGCWinnerChips();
+}
+
+function renderGCWinnerChips(){
+  const wrap = document.getElementById('gc-winner-chips');
+  if(!wrap) return;
+  if(_gcSelPlayers.size < 4){
+    wrap.innerHTML = '<span style="font-size:11px;color:var(--muted)">Select 4 players above first</span>';
+    return;
+  }
+  wrap.innerHTML = [..._gcSelPlayers].map(pid => {
+    const p = getP(pid); if(!p) return '';
+    const sel = _gcSelWinners.has(pid);
+    return '<div onclick="gcToggleWinner(\'' + pid + '\')" style="padding:6px 13px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;'
+      + 'border:2px solid ' + (sel?'var(--gold)':'var(--border)') + ';'
+      + 'background:' + (sel?'rgba(240,180,41,.15)':'var(--surface)') + ';'
+      + 'color:' + (sel?'var(--gold)':'var(--muted)') + ';transition:all .15s">'
+      + p.initials + (sel?' 🏆':'') + '</div>';
+  }).join('');
+}
+
+function gcToggleWinner(pid){
+  if(_gcSelWinners.has(pid)){ _gcSelWinners.delete(pid); }
+  else {
+    if(_gcSelWinners.size >= 2){ toast('Max 2 winners','err'); return; }
+    _gcSelWinners.add(pid);
+  }
+  renderGCWinnerChips();
+}
+
+function gcSetShuttle(n){
+  _gcShuttles = n;
+  [0,1,2].forEach(v => {
+    const btn = document.getElementById('gcs-btn-' + v);
+    if(!btn) return;
+    const active = v === n;
+    btn.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+    btn.style.background  = active ? 'rgba(22,199,132,.2)' : 'var(--surface)';
+    btn.style.color       = active ? 'var(--accent)' : 'var(--muted)';
+  });
+}
+
+function cancelGCEdit(){
+  _gcGameId = null;
+  _gcSelPlayers = new Set();
+  _gcSelWinners = new Set();
+  const sel = document.getElementById('gc-game-sel');
+  if(sel) sel.value = '';
+  document.getElementById('gc-edit-section').style.display = 'none';
+  document.getElementById('gc-status').textContent = '';
+}
+
+async function confirmGCEdit(){
+  if(!isAdmin){ toast('Admin only','err'); return; }
+  if(!_gcGameId){ toast('No game selected','err'); return; }
+  if(_gcSelPlayers.size !== 4){ toast('Select exactly 4 players','err'); return; }
+  const idx = db.games.findIndex(x => x.id === _gcGameId);
+  if(idx === -1){ toast('Game not found — try reloading the date','err'); return; }
+  const sa = document.getElementById('gc-score-a').value;
+  const sb = document.getElementById('gc-score-b').value;
+  const score = (sa !== '' && sb !== '') ? {a: parseInt(sa), b: parseInt(sb)} : null;
+  // Apply corrections
+  db.games[idx].players  = [..._gcSelPlayers];
+  db.games[idx].shuttles = _gcShuttles;
+  db.games[idx].score    = score;
+  db.games[idx].winners  = [..._gcSelWinners];
+  saveDB();
+  toast('✅ Game corrected!');
+  const statusEl = document.getElementById('gc-status');
+  statusEl.textContent = '✅ Saved locally — pushing to Google Sheet...';
+  renderDailyReport();
+  renderHome();
+  // Push to Google Sheet
+  const ok = await pushToServer('editGame', db.games[idx]);
+  if(ok){
+    setSyncStatus('online','✅ Game correction synced to central database');
+    statusEl.textContent = '✅ Synced to Google Sheet (' + fmtTime(Date.now()) + ')';
+    lastSyncTime = Date.now();
+    // Pull back to confirm
+    setTimeout(syncFromServer, 1500);
+  } else {
+    setSyncStatus('offline','📱 Corrected locally — sync pending');
+    statusEl.textContent = '⚠️ Saved locally — tap 🔄 Sync Now on Home to push';
+  }
+  cancelGCEdit();
 }
 
 // ── DAILY REPORT: Edit game ──
@@ -2503,8 +2735,14 @@ function rTab(t){
   document.getElementById('r-daily').style.display=t==='daily'?'block':'none';
   document.getElementById('r-player').style.display=t==='player'?'block':'none';
   ['week','monthly','daily','player'].forEach(x=>{document.getElementById('rt-'+x).className='stab'+(t===x?' active':'');});
-  if(t==='daily') renderDailyReport();
-  if(t==='monthly') renderMonthlyReport();
+  if(t==='daily'){
+    renderDailyReport();
+    const gcDate=document.getElementById('gc-date');
+    if(gcDate&&!gcDate.value){gcDate.value=todayStr();loadGCGames();}
+    const gcCard=document.getElementById('game-correction-card');
+    if(gcCard)gcCard.style.display=isAdmin?'block':'none';
+  }
+  if(t==='monthly')renderMonthlyReport();
 }
 function renderReport(){
   renderWeekList();
@@ -2594,6 +2832,8 @@ function updateAdminUI(){
   b.className=isAdmin?'admin-badge':'admin-badge off';
   const dbBtn=document.getElementById('dbSetupBtn');
   if(dbBtn) dbBtn.style.display=isAdmin?'inline-block':'none';
+  const gcCard=document.getElementById('game-correction-card');
+  if(gcCard) gcCard.style.display=isAdmin?'block':'none';
 }
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
@@ -3504,7 +3744,7 @@ function manualSync(){
 
 
 // ══ ROBUST iPHONE UPDATE SYSTEM v2.7 ══
-const _VER = 'v3.49';
+const _VER = 'v3.50';
 const _URL = 'https://elangovan2015es-cmd.github.io/towers-badminton/';
 
 // Step 1: Check if this load already has cache-bust param
