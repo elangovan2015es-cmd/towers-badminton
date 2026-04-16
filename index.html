@@ -3778,90 +3778,72 @@ async function manualSync(){
 }
 
 
-// ══ ROBUST iPHONE UPDATE SYSTEM v2.7 ══
+// ══ UPDATE SYSTEM v3.0 — checks raw GitHub file, no CDN cache issues ══
 const _VER = 'v3.51';
 const _URL = 'https://elangovan2015es-cmd.github.io/towers-badminton/';
+// Raw GitHub URL bypasses CDN cache — always serves the actual committed file
+const _RAW = 'https://raw.githubusercontent.com/elangovan2015es-cmd/towers-badminton/main/index.html';
 
-// Step 1: Check if this load already has cache-bust param
-// If yes, save new version stamp and clean URL
-(function(){
-  const qs = window.location.search;
-  if(qs.includes('nocache=')){
-    localStorage.setItem('tc_loaded_ver', _VER);
-    // Clean the URL without reloading
-    if(window.history && window.history.replaceState){
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }
-})();
-
-// Step 2: Hard refresh — clears SW + caches then reloads
+// Hard refresh — clears everything and reloads
 function hardRefresh(){
-  const bust = _URL + '?nocache=' + Date.now() + '&v=' + Math.random().toString(36).slice(2);
-  // Unregister service workers
   try{
     if('serviceWorker' in navigator){
-      navigator.serviceWorker.getRegistrations().then(regs=>{
-        regs.forEach(r=>r.unregister());
-      });
+      navigator.serviceWorker.getRegistrations().then(regs=>{ regs.forEach(r=>r.unregister()); });
     }
   }catch(e){}
-  // Clear caches
   try{
-    if('caches' in window){
-      caches.keys().then(keys=>{ keys.forEach(k=>caches.delete(k)); });
-    }
+    if('caches' in window){ caches.keys().then(keys=>{ keys.forEach(k=>caches.delete(k)); }); }
   }catch(e){}
-  // Navigate — use location.href (not replace) so iOS PWA stays in standalone
-  setTimeout(()=>{ window.location.href = bust; }, 400);
+  setTimeout(()=>{ window.location.href = _URL + '?nocache=' + Date.now(); }, 300);
 }
 
-// Step 3: Check GitHub for newer version
+// Check raw GitHub for newer version — bypasses CDN entirely
 function checkUpdate(){
-  const bust = _URL + '?check=' + Date.now() + '&r=' + Math.random().toString(36).slice(2);
-  fetch(bust, {
-    method:'GET',
-    cache:'no-store',
-    headers:{'Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache','Expires':'0'}
-  })
+  fetch(_RAW + '?_=' + Date.now(), { cache:'no-store' })
   .then(r => r.text())
   .then(html => {
     const m = html.match(/const _VER = '(v[\d.]+)'/);
-    if(m && m[1] && m[1] !== _VER){
-      showBanner(m[1]);
-    }
+    if(m && m[1] && m[1] !== _VER) showBanner(m[1]);
   })
-  .catch(()=>{});
+  .catch(()=>{
+    // Fallback: try GitHub Pages URL directly
+    fetch(_URL + '?_=' + Date.now(), { cache:'no-store' })
+    .then(r => r.text())
+    .then(html => {
+      const m = html.match(/const _VER = '(v[\d.]+)'/);
+      if(m && m[1] && m[1] !== _VER) showBanner(m[1]);
+    })
+    .catch(()=>{});
+  });
 }
 
 function showBanner(newVer){
   if(document.getElementById('upd-banner')) return;
-  const bust = _URL + '?nocache=' + Date.now() + '&v=' + Math.random().toString(36).slice(2);
   const d = document.createElement('div');
   d.id = 'upd-banner';
   d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#f0b429;color:#030a05;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;font-family:Outfit,sans-serif;font-size:13px;font-weight:600;box-shadow:0 3px 16px rgba(0,0,0,.4)';
-  d.innerHTML = '<div><div style="font-size:14px;font-weight:700">🆕 New Update: '+newVer+'</div><div style="font-size:11px;font-weight:400;opacity:.75;margin-top:1px">Tap UPDATE — app will reload fresh</div></div>'
+  d.innerHTML = '<div><div style="font-size:14px;font-weight:700">🆕 New Update: '+newVer+'</div>'
+    + '<div style="font-size:11px;font-weight:400;opacity:.75;margin-top:1px">Tap UPDATE to install</div></div>'
     + '<button onclick="hardRefresh()" style="background:#030a05;color:#f0b429;border:none;border-radius:8px;padding:9px 16px;font-family:Outfit,sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">UPDATE</button>';
   document.body.prepend(d);
 }
 
-// Step 4: Also add a manual refresh button in header
+// Add manual 🔄 refresh button in header
 function addRefreshBtn(){
   const hdr = document.querySelector('.hdr-right');
-  if(!hdr) return;
+  if(!hdr || document.getElementById('hdr-refresh-btn')) return;
   const btn = document.createElement('button');
-  btn.title = 'Force refresh / update app';
+  btn.id = 'hdr-refresh-btn';
   btn.style.cssText = 'background:rgba(90,122,153,.15);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:4px 8px;font-size:12px;cursor:pointer;font-family:Outfit,sans-serif;';
   btn.innerHTML = '🔄';
-  btn.onclick = function(){
-    if(confirm('Force refresh to get latest version?\n\nThis will reload the app.')) hardRefresh();
-  };
+  btn.onclick = function(){ if(confirm('Reload app to get latest version?')) hardRefresh(); };
   hdr.prepend(btn);
 }
 
-// Run checks after app loads
-setTimeout(()=>{ checkUpdate(); addRefreshBtn(); }, 2500);
-setInterval(checkUpdate, 8 * 60 * 1000);
+// Run immediately on load — no delay
+checkUpdate();
+setTimeout(addRefreshBtn, 1000);
+setInterval(checkUpdate, 5 * 60 * 1000); // check every 5 min
 </script>
   <!-- Watermark -->
   <div id="wm-footer" style="text-align:center;font-size:9px;color:#1e3048;padding:6px;letter-spacing:.5px;position:fixed;bottom:0;left:0;right:0;pointer-events:none;z-index:1">
