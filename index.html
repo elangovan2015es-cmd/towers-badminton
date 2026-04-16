@@ -1187,7 +1187,29 @@ let selP=new Set(),sCount=1,winnerSet=new Set(),scoreA=21,scoreB=15;
 let shuttlesPerBox=10;
 let champMode='individual',curHelpLang='en';
 
-function loadDB(){try{const s=localStorage.getItem(DB_KEY);if(s)db=JSON.parse(s);}catch(e){}}
+// Normalise any date format from Google Sheet → YYYY-MM-DD (must be before loadDB)
+function normaliseDate(d){
+  if(!d) return '';
+  d = String(d).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;           // already correct
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(d)){              // DD/MM/YYYY or D/M/YYYY
+    const parts=d.split('/');
+    return parts[2]+'-'+String(parts[1]).padStart(2,'0')+'-'+String(parts[0]).padStart(2,'0');
+  }
+  try{ const dt=new Date(d); if(!isNaN(dt)) return dt.toISOString().slice(0,10); }catch(e){}
+  return d;
+}
+
+function loadDB(){
+  try{
+    const s=localStorage.getItem(DB_KEY);
+    if(s){
+      db=JSON.parse(s);
+      // Normalise all game dates in case stored in wrong format
+      if(db.games) db.games=db.games.map(g=>({...g,date:normaliseDate(g.date)}));
+    }
+  }catch(e){}
+}
 function saveDB(){localStorage.setItem(DB_KEY,JSON.stringify(db));}
 loadDB();
 if(!db.weeks)db.weeks=[];
@@ -1206,6 +1228,7 @@ initGrid(); // init daily ledger grid
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function fmtDate(d){if(!d)return '01 Apr 2026';try{const dt=new Date(d+'T00:00:00');if(isNaN(dt))return '01 Apr 2026';return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return '01 Apr 2026';}}
+
 function fmtTime(ts){return new Date(ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
 function getP(id){return db.players.find(p=>p.id===id);}
 function monthKey(d){return d.slice(0,7);}
@@ -3458,7 +3481,7 @@ async function syncFromServer(){
     }
     if(data.games && data.games.length){
       db.games = data.games.map(g => ({
-        id: g.id, date: g.date, weekKey: g.weekKey,
+        id: g.id, date: normaliseDate(g.date), weekKey: g.weekKey,
         players: g.players ? g.players.split(',') : [],
         shuttles: Number(g.shuttles), ts: Number(g.ts),
         score: g.score ? JSON.parse(g.score) : null,
@@ -3763,16 +3786,32 @@ const _URL = 'https://elangovan2015es-cmd.github.io/towers-badminton/';
 // Step 2: Hard refresh function - completely bypasses ALL iOS cache
 function hardRefresh(){
   const bust = _URL + '?nocache=' + Date.now() + '&v=' + Math.random().toString(36).slice(2);
-  window.location.replace(bust);
+  // Step A: Unregister all service workers
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      const unregs = regs.map(r => r.unregister());
+      return Promise.all(unregs);
+    }).catch(()=>{});
+  }
+  // Step B: Clear all caches
+  if('caches' in window){
+    caches.keys().then(keys => {
+      keys.forEach(k => caches.delete(k));
+    }).catch(()=>{});
+  }
+  // Step C: Force navigate after short delay (gives SW time to unregister)
+  setTimeout(() => {
+    window.location.replace(bust);
+  }, 300);
 }
 
 // Step 3: Check GitHub for newer version
 function checkUpdate(){
-  const bust = _URL + '?check=' + Date.now();
+  const bust = _URL + '?check=' + Date.now() + '&r=' + Math.random().toString(36).slice(2);
   fetch(bust, {
     method:'GET',
     cache:'no-store',
-    headers:{'Cache-Control':'no-cache','Pragma':'no-cache'}
+    headers:{'Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache','Expires':'0'}
   })
   .then(r => r.text())
   .then(html => {
