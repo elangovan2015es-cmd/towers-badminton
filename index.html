@@ -3522,6 +3522,8 @@ async function syncFromServer(){
     syncOnline = true;
     lastSyncTime = Date.now();
     setSyncStatus('online', '✅ Live — All phones synced');
+    // Always refresh home stats + current screen
+    renderHome();
     render(curScreen);
     return true;
   } catch(err) {
@@ -3629,9 +3631,12 @@ async function fetchGAS(action, payload){
 
 
 // ── START AUTO SYNC every 30 seconds ──
-function startAutoSync(){
+async function startAutoSync(){
   if(syncInterval) clearInterval(syncInterval);
-  syncFromServer(); // immediate first sync
+  // First sync immediately
+  const ok = await syncFromServer();
+  // If first attempt fails (e.g. iOS just woke up), retry after 4 seconds
+  if(!ok) setTimeout(syncFromServer, 4000);
   syncInterval = setInterval(syncFromServer, 30000);
 }
 
